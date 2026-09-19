@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0" />
+  <title>HeatSafe | Heat-Stress Advisory Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            heatgreen: "#16a34a",
+            heatyellow: "#eab308",
+            heatorange: "#f97316",
+            heatred: "#dc2626",
+            heatdarkred: "#7f1d1d",
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .scrollbar-thin::-webkit-scrollbar { height: 8px; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-w-[320px]">
+
+  <header class="bg-slate-900 text-white sticky top-0 z-10 shadow-md">
+    <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-2xl">🌡️</span>
+        <h1 class="text-xl font-bold tracking-tight">HeatSafe</h1>
+      </div>
+      <span class="text-xs sm:text-sm text-slate-300">Hyperlocal Heat-Stress Advisory</span>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 py-6 space-y-6">
+
+    <!-- Controls -->
+    <section class="bg-white rounded-2xl shadow-sm p-4 sm:p-5 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
+      <div class="flex flex-col gap-1 flex-1">
+        <label for="city-select" class="text-xs font-semibold uppercase text-slate-500">Location</label>
+        <select id="city-select" class="w-full sm:w-64 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-800">
+          {% for key, city in cities.items() %}
+          <option value="{{ key }}" {% if key == 'phoenix' %}selected{% endif %}>{{ city.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <span class="text-xs font-semibold uppercase text-slate-500">I am a...</span>
+        <div class="inline-flex rounded-lg border border-slate-300 overflow-hidden">
+          <button id="role-general" class="persona-btn px-4 py-2 text-sm font-medium bg-slate-900 text-white transition" data-role="general_public">
+            General Public
+          </button>
+          <button id="role-worker" class="persona-btn px-4 py-2 text-sm font-medium bg-white text-slate-700 transition" data-role="outdoor_worker">
+            Outdoor Worker
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stale data warning -->
+    <div id="stale-warning" class="hidden bg-yellow-50 border border-yellow-300 text-yellow-800 text-sm rounded-xl px-4 py-2">
+      ⚠️ Showing cached data — live weather service is temporarily unavailable.
+    </div>
+
+    <!-- Risk Banner -->
+    <section id="risk-banner" class="rounded-2xl shadow-md p-6 text-white transition-colors duration-500 bg-slate-400">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <p id="location-name" class="text-sm font-medium opacity-90">Loading location…</p>
+          <h2 id="risk-band" class="text-3xl sm:text-4xl font-extrabold mt-1">—</h2>
+          <p id="risk-level" class="text-sm mt-1 opacity-90">Risk level: —</p>
+        </div>
+        <div class="text-right">
+          <p class="text-xs uppercase opacity-80">Heat Index</p>
+          <p id="heat-index" class="text-4xl sm:text-5xl font-black">—</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Current Conditions -->
+    <section class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div class="bg-white rounded-xl shadow-sm p-4 text-center">
+        <p class="text-xs uppercase text-slate-500">Temperature</p>
+        <p id="stat-temp" class="text-xl font-bold mt-1">—</p>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm p-4 text-center">
+        <p class="text-xs uppercase text-slate-500">Humidity</p>
+        <p id="stat-humidity" class="text-xl font-bold mt-1">—</p>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm p-4 text-center">
+        <p class="text-xs uppercase text-slate-500">Wind</p>
+        <p id="stat-wind" class="text-xl font-bold mt-1">—</p>
+      </div>
+      <div class="bg-white rounded-xl shadow-sm p-4 text-center">
+        <p class="text-xs uppercase text-slate-500">Coordinates</p>
+        <p id="stat-coords" class="text-xs font-semibold mt-1">—</p>
+      </div>
+    </section>
+
+    <!-- Action Cards -->
+    <section class="grid sm:grid-cols-2 gap-4">
+      <div class="bg-white rounded-2xl shadow-sm p-5">
+        <h3 class="font-bold text-slate-700 flex items-center gap-2"><span>💧</span> Hydration Guidance</h3>
+        <p id="hydration-rate" class="text-2xl font-extrabold text-sky-600 mt-2">—</p>
+        <p class="text-xs text-slate-500 mt-1">Recommended fluid intake per hour of exposure</p>
+      </div>
+      <div class="bg-white rounded-2xl shadow-sm p-5">
+        <h3 class="font-bold text-slate-700 flex items-center gap-2"><span>⏱️</span> Work / Rest Ratio</h3>
+        <p id="work-rest" class="text-lg font-extrabold text-slate-800 mt-2">—</p>
+        <p class="text-xs text-slate-500 mt-1">OSHA-aligned recommendation for this heat level</p>
+      </div>
+    </section>
+
+    <!-- Micro Advisory -->
+    <section class="bg-white rounded-2xl shadow-sm p-5">
+      <h3 class="font-bold text-slate-700 mb-3">📋 Safety Advisory</h3>
+      <ul id="advisory-list" class="space-y-2 text-sm text-slate-700 list-none">
+        <li class="text-slate-400">Loading advisory…</li>
+      </ul>
+    </section>
+
+    <!-- 24h Timeline -->
+    <section class="bg-white rounded-2xl shadow-sm p-5">
+      <h3 class="font-bold text-slate-700 mb-3">📈 24-Hour Heat Index Timeline</h3>
+      <div id="timeline" class="flex gap-2 overflow-x-auto scrollbar-thin pb-2">
+        <p class="text-slate-400 text-sm">Loading timeline…</p>
+      </div>
+    </section>
+
+    <footer class="text-center text-xs text-slate-400 pt-4 pb-8">
+      Data via Open-Meteo · Heat Index per NOAA Rothfusz regression · Not a substitute for official emergency guidance.
+    </footer>
+  </main>
+
+  <script>
+    const COLOR_MAP = {
+      green: { bg: "bg-heatgreen", text: "text-heatgreen" },
+      yellow: { bg: "bg-heatyellow", text: "text-heatyellow" },
+      orange: { bg: "bg-heatorange", text: "text-heatorange" },
+      red: { bg: "bg-heatred", text: "text-heatred" },
+      darkred: { bg: "bg-heatdarkred", text: "text-heatdarkred" },
+    };
+
+    const BANNER_BASE_CLASSES = "rounded-2xl shadow-md p-6 text-white transition-colors duration-500";
+
+    let currentCity = document.getElementById("city-select").value;
+    let currentRole = "general_public";
+
+    function setPersonaButtons(role) {
+      currentRole = role;
+      const general = document.getElementById("role-general");
+      const worker = document.getElementById("role-worker");
+      const activeClasses = ["bg-slate-900", "text-white"];
+      const inactiveClasses = ["bg-white", "text-slate-700"];
+
+      [general, worker].forEach((btn) => {
+        activeClasses.forEach((c) => btn.classList.remove(c));
+        inactiveClasses.forEach((c) => btn.classList.remove(c));
+      });
+
+      if (role === "general_public") {
+        activeClasses.forEach((c) => general.classList.add(c));
+        inactiveClasses.forEach((c) => worker.classList.add(c));
+      } else {
+        activeClasses.forEach((c) => worker.classList.add(c));
+        inactiveClasses.forEach((c) => general.classList.add(c));
+      }
+    }
+
+    async function loadAdvisory() {
+      const banner = document.getElementById("risk-banner");
+      banner.className = BANNER_BASE_CLASSES + " bg-slate-400";
+
+      try {
+        const res = await fetch(`/api/advisory?city=${encodeURIComponent(currentCity)}&role=${encodeURIComponent(currentRole)}`);
+        if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+        const data = await res.json();
+        render(data);
+      } catch (err) {
+        console.error(err);
+        document.getElementById("risk-band").textContent = "Unavailable";
+        document.getElementById("risk-level").textContent = "Could not load advisory data.";
+      }
+    }
+
+    function render(data) {
+      const c = data.current;
+      const colorTokens = COLOR_MAP[c.color] || COLOR_MAP.green;
+
+      document.getElementById("stale-warning").classList.toggle("hidden", !data.stale_data);
+
+      document.getElementById("location-name").textContent =
+        `${data.location.name} (${data.location.latitude.toFixed(2)}, ${data.location.longitude.toFixed(2)})`;
+      document.getElementById("risk-band").textContent = c.band;
+      document.getElementById("risk-level").textContent = `Risk level: ${c.risk_level}`;
+      document.getElementById("heat-index").textContent = `${c.heat_index_c}°C`;
+
+      const banner = document.getElementById("risk-banner");
+      banner.className = `${BANNER_BASE_CLASSES} ${colorTokens.bg}`;
+
+      document.getElementById("stat-temp").textContent = `${c.temperature_c}°C`;
+      document.getElementById("stat-humidity").textContent = `${c.relative_humidity}%`;
+      document.getElementById("stat-wind").textContent = `${c.wind_speed_kmh} km/h`;
+      document.getElementById("stat-coords").textContent =
+        `${data.location.latitude.toFixed(2)}, ${data.location.longitude.toFixed(2)}`;
+
+      document.getElementById("hydration-rate").textContent = `${c.hydration_l_per_hr} L/hr`;
+      document.getElementById("work-rest").textContent = c.work_rest_ratio;
+
+      const advisoryList = document.getElementById("advisory-list");
+      advisoryList.innerHTML = "";
+      c.micro_advisory.forEach((item) => {
+        const li = document.createElement("li");
+        li.className = "flex items-start gap-2";
+        li.innerHTML = `<span class="mt-0.5">•</span><span>${item}</span>`;
+        advisoryList.appendChild(li);
+      });
+
+      const timeline = document.getElementById("timeline");
+      timeline.innerHTML = "";
+      data.hourly.forEach((hour) => {
+        const hourColor = COLOR_MAP[hour.color] || COLOR_MAP.green;
+        const time = new Date(hour.time);
+        const label = time.toLocaleTimeString([], { hour: "numeric" });
+
+        const card = document.createElement("div");
+        card.className = "flex-shrink-0 w-20 rounded-xl border border-slate-200 p-2 text-center";
+        card.innerHTML = `
+          <p class="text-xs text-slate-500">${label}</p>
+          <div class="w-4 h-4 rounded-full mx-auto my-1 ${hourColor.bg}"></div>
+          <p class="text-sm font-bold">${hour.heat_index_c}°C</p>
+          <p class="text-[10px] text-slate-400">${hour.band}</p>
+        `;
+        timeline.appendChild(card);
+      });
+    }
+
+    document.getElementById("city-select").addEventListener("change", (e) => {
+      currentCity = e.target.value;
+      loadAdvisory();
+    });
+
+    document.querySelectorAll(".persona-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        setPersonaButtons(btn.dataset.role);
+        loadAdvisory();
+      });
+    });
+
+    setPersonaButtons("general_public");
+    loadAdvisory();
+  </script>
+</body>
+</html>
