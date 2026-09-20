@@ -16,6 +16,10 @@ HeatSafe is a Hyperlocal Climate & Heat-Stress Advisory Engine designed for outd
 - **User**: Either an Outdoor Worker or General Public member
 - **Micro_Advisory**: Role-specific safety recommendation
 - **App_Runner**: AWS deployment service for containerized applications
+- **Configuration_Parser**: Component that reads and validates configuration files and environment variables
+- **Data_Serializer**: Component that formats data for API responses and exports (JSON, CSV)
+- **City_Configuration**: JSON structure defining preset city coordinates with name, latitude, and longitude
+- **Advisory_Data_Schema**: Defined structure for heat advisory information including temperature, humidity, risk level, and recommendations
 
 ## Requirements
 
@@ -104,7 +108,7 @@ HeatSafe is a Hyperlocal Climate & Heat-Stress Advisory Engine designed for outd
 1. THE Dashboard SHALL load complete interface within 2 seconds on stable internet connection
 2. THE Weather_API_Consumer SHALL complete data retrieval within 1 second 95% of the time
 3. THE Heat_Index_Calculator SHALL complete calculations within 100ms for single location
-4. THE HeatSafe SHALL maintain 99% uptime during daylight hours (6 AM to 8 PM local time)
+4. THE HeatSafe SHALL maintain high availability during daylight hours (6 AM to 8 PM local time) with target uptime of 99%
 5. WHEN backend service is unavailable, THE Dashboard SHALL display cached data with "stale data" warning
 
 ### Requirement 8: Deployment and Scalability
@@ -119,6 +123,23 @@ HeatSafe is a Hyperlocal Climate & Heat-Stress Advisory Engine designed for outd
 4. THE HeatSafe SHALL implement health check endpoints for container orchestration
 5. THE HeatSafe SHALL log all critical operations for monitoring and debugging
 
+### Requirement 9: Configuration and Data Format Handling
+
+**User Story:** As a HeatSafe operator, I want reliable configuration parsing and data serialization, so that the system can adapt to different environments and ensure data integrity.
+
+#### Acceptance Criteria
+
+1. **Configuration Parser**: WHEN a configuration file is provided, THE Configuration_Parser SHALL parse environment variables, city coordinates, and API settings
+2. **Configuration Validation**: WHEN invalid configuration values are detected, THE Configuration_Parser SHALL log descriptive errors and use safe defaults
+3. **City Configuration**: THE Configuration_Parser SHALL support JSON format for city preset definitions with name, latitude, and longitude fields
+4. **Environment Variables**: THE Configuration_Parser SHALL read environment variables for API endpoints, retry limits, and cache settings
+5. **Data Serialization**: THE Data_Serializer SHALL format advisory data as JSON for API responses according to the defined schema
+6. **CSV Export**: WHEN historical data export is requested, THE Data_Serializer SHALL format data as CSV with proper headers and timestamp formatting
+7. **Round-Trip Property**: FOR ALL valid configuration objects, parsing then serializing then parsing SHALL produce an equivalent configuration object
+8. **Round-Trip Property**: FOR ALL valid advisory data objects, serializing then deserializing SHALL preserve all data fields and values
+9. **Error Handling**: WHEN malformed JSON or CSV data is encountered during parsing, THE Parser SHALL return descriptive error messages
+10. **Character Encoding**: THE Data_Serializer SHALL use UTF-8 encoding for all text-based data formats (JSON, CSV)
+
 ## Functional Requirements
 
 ### Data Processing
@@ -128,17 +149,25 @@ HeatSafe is a Hyperlocal Climate & Heat-Stress Advisory Engine designed for outd
 - F4: THE System SHALL generate role-specific micro-advisories
 - F5: THE System SHALL calculate OSHA-aligned work/rest ratios
 
+### Configuration and Data Formats
+- F6: THE Configuration_Parser SHALL read environment variables for system settings
+- F7: THE Configuration_Parser SHALL parse JSON city configuration files
+- F8: THE Data_Serializer SHALL format advisory data as JSON for API responses
+- F9: THE Data_Serializer SHALL export historical data as CSV files
+- F10: FOR ALL valid configurations, parsing then serializing then parsing SHALL produce equivalent objects (round-trip)
+- F11: FOR ALL valid advisory data, serializing then deserializing SHALL preserve all fields (round-trip)
+
 ### User Interface
-- F6: THE Dashboard SHALL display current heat stress level with color coding
-- F7: THE Dashboard SHALL show hourly forecast timeline
-- F8: THE Dashboard SHALL allow user role selection (Outdoor Worker/General Public)
-- F9: THE Dashboard SHALL display location information
-- F10: THE Dashboard SHALL be fully responsive across device sizes
+- F12: THE Dashboard SHALL display current heat stress level with color coding
+- F13: THE Dashboard SHALL show hourly forecast timeline
+- F14: THE Dashboard SHALL allow user role selection (Outdoor Worker/General Public)
+- F15: THE Dashboard SHALL display location information
+- F16: THE Dashboard SHALL be fully responsive across device sizes
 
 ### Data Management
-- F11: THE System SHALL cache weather data for fallback scenarios
-- F12: THE System SHALL store historical heat stress data for 30 days
-- F13: THE System SHALL provide data export functionality
+- F17: THE System SHALL cache weather data for fallback scenarios
+- F18: THE System SHALL store historical heat stress data for 30 days
+- F19: THE System SHALL provide data export functionality
 
 ## Non-Functional Requirements
 
