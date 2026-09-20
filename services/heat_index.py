@@ -107,7 +107,7 @@ _BANDS: list[tuple[float, SafetyBand]] = [
     (91.0, SafetyBand("Caution", "Moderate", "yellow", "50% work / 50% rest per hour", 0.5)),
     (103.0, SafetyBand("Extreme Caution", "High", "orange", "25% work / 75% rest per hour", 0.75)),
     (125.0, SafetyBand("Danger", "Extreme", "red", "Cease strenuous work / seek shelter", 1.0)),
-    (math.inf, SafetyBand("Extreme Danger", "Extreme", "darkred", "Stop all outdoor work immediately", 1.0)),
+    (math.inf, SafetyBand("Extreme Danger", "Extreme", "darkred", "Cease all outdoor work immediately / seek shelter", 1.0)),
 ]
 
 

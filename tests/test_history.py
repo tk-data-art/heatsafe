@@ -31,17 +31,17 @@ def _iso(days_ago: float) -> str:
 
 
 def _make_record(timestamp: str, heat_index_c: float = 30.0, **overrides: Any) -> HistoryRecord:
-    defaults: dict[str, Any] = dict(
-        timestamp=timestamp,
-        latitude=33.4484,
-        longitude=-112.0740,
-        location_name="Phoenix, USA",
-        temperature_c=32.0,
-        relative_humidity=20.0,
-        heat_index_c=heat_index_c,
-        risk_level="High",
-        band="Extreme Caution",
-    )
+    defaults: dict[str, Any] = {
+        "timestamp": timestamp,
+        "latitude": 33.4484,
+        "longitude": -112.0740,
+        "location_name": "Phoenix, USA",
+        "temperature_c": 32.0,
+        "relative_humidity": 20.0,
+        "heat_index_c": heat_index_c,
+        "risk_level": "High",
+        "band": "Extreme Caution",
+    }
     defaults.update(overrides)
     return HistoryRecord(**defaults)
 
