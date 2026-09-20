@@ -4,7 +4,7 @@
 
 HeatSafe is a Hyperlocal Climate & Heat-Stress Advisory Engine that transforms raw weather data into actionable, physiological safety guidance for outdoor workers and heat-vulnerable community members. Standard weather applications report ambient temperature, which correlates poorly with physiological heat stress. HeatSafe addresses this gap by applying the NOAA Rothfusz regression to compute the apparent heat index, classifying risk into four OSHA-aligned safety bands, and surfacing role-specific micro-advisories through a responsive single-page dashboard.
 
-The system is intentionally narrow in scope for the hackathon: a single Python (FastAPI) backend, a server-rendered Jinja2 HTML frontend, and deployment to AWS App Runner via a single Dockerfile. There are no databases, no user accounts, and no authentication — complexity is deliberately kept low to maximise reliability and deployability.
+The system is intentionally narrow in scope for the hackathon: a single Python (FastAPI) backend, a server-rendered Jinja2 HTML frontend, and deployment to Amazon ECS on Fargate via a single Dockerfile. There are no databases, no user accounts, and no authentication — complexity is deliberately kept low to maximise reliability and deployability.
 
 ### Key Design Decisions
 
@@ -13,8 +13,8 @@ The system is intentionally narrow in scope for the hackathon: a single Python (
 | Weather data source | Open-Meteo (free, no API key) | Zero friction for hackathon judges to deploy |
 | Heat index algorithm | NOAA Rothfusz regression (pure Python) | Authoritative, well-documented, no dependencies |
 | Frontend rendering | Jinja2 SSR + vanilla JS + Tailwind CDN | Single template file, no build step needed |
-| Persistence | In-memory cache (dict) + CSV flat file | Sufficient for 30-day MVP; no database required |
-| Deployment | AWS App Runner via Dockerfile | Single command deploy, auto-scales, built-in health checks |
+| Persistence | In-memory cache (dict) + CSV flat file (Fargate ephemeral storage — data lost on container replacement) | Sufficient for 30-day MVP; no database required |
+| Deployment | Amazon ECS on Fargate via Dockerfile | Serverless containers, auto-scales, ALB health checks |
 
 ---
 
@@ -32,7 +32,7 @@ graph TD
     OpenMeteo["Open-Meteo API\n(external)"]
     Cache["In-Memory Cache\n(Python dict)"]
     HistoryFile["history.csv\n(flat file)"]
-    AppRunner["AWS App Runner\n(container host)"]
+    AppRunner["Amazon ECS on Fargate\n(container host)"]
 
     Browser -->|"GET / (HTML)"| FastAPI
     Browser -->|"GET /api/advisory"| FastAPI
@@ -85,7 +85,7 @@ The top-level ASGI application. Wires together all services and defines the thre
 |---|---|---|
 | `GET` | `/` | Server-rendered dashboard (Jinja2 template) |
 | `GET` | `/api/advisory` | JSON advisory for current + 24h hourly forecast |
-| `GET` | `/api/health` | Health check for App Runner container orchestration |
+| `GET` | `/api/health` | Health check for ECS Fargate container orchestration |
 | `GET` | `/api/history/export` | Download historical data as CSV |
 
 **`GET /api/advisory` query parameters:**
@@ -95,7 +95,10 @@ The top-level ASGI application. Wires together all services and defines the thre
 | `city` | `str` | `"phoenix"` | Preset city key (e.g., `dubai`, `chennai`) |
 | `lat` | `float` | — | Latitude (used when `city` is absent) |
 | `lon` | `float` | — | Longitude (used when `city` is absent) |
-| `role` | `str` | `"general_public"` | `outdoor_worker` or `general_public` |
+| `role` | `str` | `"general_public"` | `outdoor_worker` or `general_public` (canonical parameter) |
+| `persona` | `str` | — | Backward-compatible alias for `role`; `role` takes precedence if both are supplied |
+
+> **Note:** If both `role` and `persona` are present in the same request, `role` takes precedence. If neither is supplied, the default `"general_public"` is used.
 
 **`GET /api/advisory` response schema (`AdvisoryResponse`):**
 
@@ -243,6 +246,10 @@ This module centralises all configuration loading and data serialisation logic, 
 
 Thin persistence layer that appends advisory snapshots to a CSV file and reads them back for trend analysis and export.
 
+> **Storage note:** `history.csv` is written to Fargate ephemeral container storage, mounted at the task working directory. Data does **not** persist across container restarts or task replacements in the MVP.
+>
+> **Production roadmap:** Offload audit records to an Amazon S3 bucket named `heatsafe-audit-logs`, replacing all file I/O with `boto3` S3 `PutObject` calls. Each record becomes a single timestamped S3 object; `read_records` becomes a paginated S3 `ListObjectsV2` + `GetObject` sequence.
+
 **Public API:**
 
 | Function | Signature | Description |
@@ -318,7 +325,10 @@ EXPOSE 8080
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
 ```
 
-AWS App Runner expects traffic on port 8080 and polls `GET /api/health` for liveness.
+Amazon ECS on Fargate runs this image as a task. Two deployment details to note:
+
+- **Port mapping:** Port 8080 is the container port; the ECS task definition maps host port 8080 → container port 8080.
+- **Health checks:** The ALB target group performs health checks against `GET /api/health` (expects HTTP 200 within 5 s).
 
 ---
 
