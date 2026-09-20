@@ -10,14 +10,23 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
+from services.config import AppConfig, load_config
+
 logger = logging.getLogger("heatsafe.weather")
 
+# Fallback defaults, also used as the AppConfig defaults (services/config.py).
+# Kept here for backward compatibility with callers/tests that reference
+# these constants directly; actual runtime behaviour is driven by AppConfig
+# (see `fetch_weather`'s `config` parameter).
 OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
+MAX_RETRIES = 3
+BASE_BACKOFF_SECONDS = 0.5
 
 # ---------------------------------------------------------------------------
 # Preset coordinates for heat-vulnerable cities
@@ -32,11 +41,9 @@ PRESET_CITIES: dict[str, dict[str, Any]] = {
     "riyadh": {"name": "Riyadh, Saudi Arabia", "lat": 24.7136, "lon": 46.6753},
 }
 
-MAX_RETRIES = 3
-BASE_BACKOFF_SECONDS = 0.5
-
 # Simple in-memory cache used as a fallback when the API is unreachable.
-_last_good_cache: dict[str, "WeatherSnapshot"] = {}
+_last_good_cache: dict[str, WeatherSnapshot] = {}
+_cache_fetched_at: dict[str, float] = {}
 
 
 @dataclass
@@ -57,19 +64,29 @@ class WeatherSnapshot:
     stale: bool = False
 
 
-def get_city_coordinates(city_key: str) -> Optional[dict[str, Any]]:
+def get_city_coordinates(city_key: str) -> dict[str, Any] | None:
     """Look up preset coordinates by city key (case-insensitive)."""
     return PRESET_CITIES.get(city_key.lower())
 
 
-async def fetch_weather(latitude: float, longitude: float) -> WeatherSnapshot:
+async def fetch_weather(
+    latitude: float, longitude: float, config: AppConfig | None = None
+) -> WeatherSnapshot:
     """
     Fetch current conditions + next 24h hourly forecast from Open-Meteo.
 
-    Retries up to MAX_RETRIES times with exponential backoff on network
-    failure. Falls back to the last successfully cached snapshot for these
-    coordinates if all retries fail.
+    Retries up to `config.max_retries` times with exponential backoff
+    (base `config.base_backoff_seconds`) on network failure. Falls back to
+    the last successfully cached snapshot for these coordinates if all
+    retries fail; `config.cache_ttl_seconds` is used only to decide whether
+    to log an extra staleness warning (cached data is always preferred over
+    no data at all).
+
+    If `config` is not supplied, configuration is loaded fresh via
+    `services.config.load_config()` (environment variables with safe
+    defaults).
     """
+    cfg = config if config is not None else load_config()
     cache_key = f"{round(latitude, 4)},{round(longitude, 4)}"
 
     params = {
@@ -83,31 +100,40 @@ async def fetch_weather(latitude: float, longitude: float) -> WeatherSnapshot:
 
     last_error: Exception | None = None
 
-    for attempt in range(MAX_RETRIES):
+    for attempt in range(cfg.max_retries):
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.get(OPEN_METEO_URL, params=params)
+                response = await client.get(cfg.open_meteo_url, params=params)
                 response.raise_for_status()
                 data = response.json()
                 snapshot = _parse_snapshot(data)
                 _last_good_cache[cache_key] = snapshot
+                _cache_fetched_at[cache_key] = time.monotonic()
                 return snapshot
         except (httpx.HTTPError, KeyError, ValueError, TypeError) as exc:
             last_error = exc
             logger.warning(
                 "Open-Meteo fetch failed (attempt %d/%d): %s",
                 attempt + 1,
-                MAX_RETRIES,
+                cfg.max_retries,
                 exc,
             )
-            if attempt < MAX_RETRIES - 1:
-                await asyncio.sleep(BASE_BACKOFF_SECONDS * (2**attempt))
+            if attempt < cfg.max_retries - 1:
+                await asyncio.sleep(cfg.base_backoff_seconds * (2**attempt))
 
     logger.error("Open-Meteo fetch exhausted retries: %s", last_error)
 
     cached = _last_good_cache.get(cache_key)
     if cached is not None:
         cached.stale = True
+        age_seconds = time.monotonic() - _cache_fetched_at.get(cache_key, 0.0)
+        if age_seconds > cfg.cache_ttl_seconds:
+            logger.warning(
+                "Serving weather cache older than TTL for %s (%.0fs > %ds)",
+                cache_key,
+                age_seconds,
+                cfg.cache_ttl_seconds,
+            )
         return cached
 
     raise RuntimeError(
