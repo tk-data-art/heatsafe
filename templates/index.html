@@ -44,11 +44,21 @@
     <section class="bg-white rounded-2xl shadow-sm p-4 sm:p-5 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
       <div class="flex flex-col gap-1 flex-1">
         <label for="city-select" class="text-xs font-semibold uppercase text-slate-500">Location</label>
-        <select id="city-select" class="w-full sm:w-64 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-800">
-          {% for key, city in cities.items() %}
-          <option value="{{ key }}" {% if key == 'phoenix' %}selected{% endif %}>{{ city.name }}</option>
-          {% endfor %}
-        </select>
+        <div class="flex items-center gap-2">
+          <select id="city-select" class="w-full sm:w-64 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-800">
+            {% for key, city in cities.items() %}
+            <option value="{{ key }}" {% if key == 'phoenix' %}selected{% endif %}>{{ city.name }}</option>
+            {% endfor %}
+          </select>
+          <button
+            id="near-me-btn"
+            type="button"
+            class="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 transition focus:outline-none focus:ring-2 focus:ring-slate-800"
+            title="Use My Location"
+          >
+            <span>📍</span> Near Me
+          </button>
+        </div>
       </div>
 
       <div class="flex flex-col gap-1">
@@ -61,6 +71,16 @@
             Outdoor Worker
           </button>
         </div>
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label for="lang-select" class="text-xs font-semibold uppercase text-slate-500">Language</label>
+        <select id="lang-select" class="w-full sm:w-36 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-800">
+          <option value="en" selected>English (en)</option>
+          <option value="ar">العربية (ar)</option>
+          <option value="hi">हिंदी (hi)</option>
+          <option value="es">Español (es)</option>
+        </select>
       </div>
 
       <div class="flex flex-col gap-1">
@@ -130,12 +150,29 @@
       </div>
     </section>
 
-    <!-- Micro Advisory -->
+    <!-- Tactical Safety Advisory (Amazon Bedrock) -->
     <section class="bg-white rounded-2xl shadow-sm p-5">
-      <h3 class="font-bold text-slate-700 mb-3">📋 Safety Advisory</h3>
-      <ul id="advisory-list" class="space-y-2 text-sm text-slate-700 list-none">
-        <li class="text-slate-400">Loading advisory…</li>
-      </ul>
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <div class="flex items-center gap-2">
+          <h3 class="font-bold text-slate-700">📋 Tactical Safety Advisory</h3>
+          <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+            ⚡ Powered by Amazon Bedrock
+          </span>
+        </div>
+        <button
+          id="listen-btn"
+          type="button"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-300 transition focus:outline-none focus:ring-2 focus:ring-slate-800"
+          title="Listen to audio briefing"
+        >
+          <span>🔊</span> Listen
+        </button>
+      </div>
+      <div id="advisory-container" dir="ltr">
+        <ul id="advisory-list" class="space-y-2 text-sm text-slate-700 list-none">
+          <li class="text-slate-400">Loading advisory…</li>
+        </ul>
+      </div>
     </section>
 
     <!-- 24h Timeline -->
@@ -164,6 +201,16 @@
 
     let currentCity = document.getElementById("city-select").value;
     let currentRole = "general_public";
+    let currentLang = document.getElementById("lang-select") ? document.getElementById("lang-select").value : "en";
+    let currentCoords = null;
+    let currentAiAdvisory = [];
+
+    const LANG_BCP47 = {
+      en: "en-US",
+      ar: "ar-SA",
+      hi: "hi-IN",
+      es: "es-ES",
+    };
 
     function setPersonaButtons(role) {
       currentRole = role;
@@ -191,7 +238,13 @@
       banner.className = BANNER_BASE_CLASSES + " bg-slate-400";
 
       try {
-        const res = await fetch(`/api/advisory?city=${encodeURIComponent(currentCity)}&role=${encodeURIComponent(currentRole)}`);
+        let url;
+        if (currentCoords) {
+          url = `/api/advisory?lat=${currentCoords.lat}&lon=${currentCoords.lon}&role=${encodeURIComponent(currentRole)}&lang=${encodeURIComponent(currentLang)}`;
+        } else {
+          url = `/api/advisory?city=${encodeURIComponent(currentCity)}&role=${encodeURIComponent(currentRole)}&lang=${encodeURIComponent(currentLang)}`;
+        }
+        const res = await fetch(url);
         if (!res.ok) throw new Error(`Request failed: ${res.status}`);
         const data = await res.json();
         render(data);
@@ -226,9 +279,15 @@
       document.getElementById("hydration-rate").textContent = `${c.hydration_l_per_hr} L/hr`;
       document.getElementById("work-rest").textContent = c.work_rest_ratio;
 
+      currentAiAdvisory = data.ai_advisory || c.micro_advisory || [];
+      const advisoryContainer = document.getElementById("advisory-container");
+      if (advisoryContainer) {
+        advisoryContainer.setAttribute("dir", currentLang === "ar" ? "rtl" : "ltr");
+      }
+
       const advisoryList = document.getElementById("advisory-list");
       advisoryList.innerHTML = "";
-      c.micro_advisory.forEach((item) => {
+      currentAiAdvisory.forEach((item) => {
         const li = document.createElement("li");
         li.className = "flex items-start gap-2";
         li.innerHTML = `<span class="mt-0.5">•</span><span>${item}</span>`;
@@ -254,10 +313,169 @@
       });
     }
 
+    const nearMeBtn = document.getElementById("near-me-btn");
+    if (nearMeBtn) {
+      nearMeBtn.addEventListener("click", () => {
+        if (!navigator.geolocation) {
+          alert("Geolocation is not supported by your browser.");
+          return;
+        }
+
+        const originalText = nearMeBtn.innerHTML;
+        nearMeBtn.disabled = true;
+        nearMeBtn.innerHTML = "<span>⏳</span> Locating…";
+
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            nearMeBtn.disabled = false;
+            nearMeBtn.innerHTML = originalText;
+
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            currentCoords = { lat, lon };
+
+            const citySelect = document.getElementById("city-select");
+            let locOption = document.getElementById("current-loc-option");
+            if (!locOption) {
+              locOption = document.createElement("option");
+              locOption.id = "current-loc-option";
+              citySelect.appendChild(locOption);
+            }
+            locOption.value = "current_location";
+            locOption.textContent = `📍 Current Location (${lat.toFixed(2)}, ${lon.toFixed(2)})`;
+            locOption.selected = true;
+
+            await loadAdvisory();
+          },
+          (err) => {
+            nearMeBtn.disabled = false;
+            nearMeBtn.innerHTML = originalText;
+            console.error("Geolocation error:", err);
+            alert(`Unable to retrieve your location: ${err.message}`);
+          },
+          { timeout: 10000, enableHighAccuracy: true }
+        );
+      });
+    }
+
     document.getElementById("city-select").addEventListener("change", (e) => {
-      currentCity = e.target.value;
-      loadAdvisory();
+      if (e.target.value === "current_location" && currentCoords) {
+        loadAdvisory();
+      } else {
+        currentCoords = null;
+        currentCity = e.target.value;
+        loadAdvisory();
+      }
     });
+
+    const langSelect = document.getElementById("lang-select");
+    if (langSelect) {
+      langSelect.addEventListener("change", (e) => {
+        currentLang = e.target.value;
+        if (window.speechSynthesis && window.speechSynthesis.speaking) {
+          window.speechSynthesis.cancel();
+          const btn = document.getElementById("listen-btn");
+          if (btn) btn.innerHTML = "<span>🔊</span> Listen";
+        }
+        loadAdvisory();
+      });
+    }
+
+    function getPreferredVoice(lang) {
+      if (!("speechSynthesis" in window)) return null;
+      const voices = window.speechSynthesis.getVoices();
+      if (!voices || voices.length === 0) return null;
+
+      const targetBcp = LANG_BCP47[lang] || "en-US";
+      const langPrefix = targetBcp.split("-")[0];
+      const langVoices = voices.filter((v) =>
+        v.lang.replace("_", "-").toLowerCase().startsWith(langPrefix.toLowerCase())
+      );
+
+      if (langPrefix === "en") {
+        const preferredNames = [
+          "google us english",
+          "samantha",
+          "karen",
+          "victoria",
+          "siri",
+          "natural",
+          "premium"
+        ];
+        for (const pref of preferredNames) {
+          const match = langVoices.find((v) => v.name.toLowerCase().includes(pref));
+          if (match) return match;
+        }
+      }
+
+      const naturalVoice = langVoices.find((v) =>
+        v.name.toLowerCase().includes("natural") || v.name.toLowerCase().includes("premium")
+      );
+      if (naturalVoice) return naturalVoice;
+
+      return (
+        langVoices.find((v) => v.lang.replace("_", "-").toLowerCase() === targetBcp.toLowerCase()) ||
+        langVoices[0] ||
+        null
+      );
+    }
+
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.getVoices();
+      };
+    }
+
+    const listenBtn = document.getElementById("listen-btn");
+    if (listenBtn) {
+      listenBtn.addEventListener("click", () => {
+        if (!("speechSynthesis" in window)) {
+          alert("Web Speech audio synthesis is not supported in this browser.");
+          return;
+        }
+
+        if (window.speechSynthesis.speaking) {
+          window.speechSynthesis.cancel();
+          listenBtn.innerHTML = "<span>🔊</span> Listen";
+          return;
+        }
+
+        if (!currentAiAdvisory || currentAiAdvisory.length === 0) {
+          return;
+        }
+
+        // Clean bullets and strip markers (-, *, •, numbers) for crisp audio playback
+        const cleanedBullets = currentAiAdvisory
+          .map((item) => item.replace(/^[•\-\*\d\.\)\s]+/, "").trim())
+          .filter((item) => item.length > 0);
+
+        if (cleanedBullets.length === 0) return;
+
+        const textToSpeak = cleanedBullets.join(". ");
+        const utterance = new SpeechSynthesisUtterance(textToSpeak);
+        const targetBcp = LANG_BCP47[currentLang] || "en-US";
+        utterance.lang = targetBcp;
+
+        // Dial rate down to 0.92 for crisp, clear enunciation
+        utterance.rate = 0.92;
+        utterance.pitch = 1.0;
+
+        const voice = getPreferredVoice(currentLang);
+        if (voice) {
+          utterance.voice = voice;
+        }
+
+        listenBtn.innerHTML = "<span>⏹️</span> Stop";
+        utterance.onend = () => {
+          listenBtn.innerHTML = "<span>🔊</span> Listen";
+        };
+        utterance.onerror = () => {
+          listenBtn.innerHTML = "<span>🔊</span> Listen";
+        };
+
+        window.speechSynthesis.speak(utterance);
+      });
+    }
 
     document.querySelectorAll(".persona-btn").forEach((btn) => {
       btn.addEventListener("click", () => {

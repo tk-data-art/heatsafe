@@ -1,0 +1,5 @@
+timestamp,latitude,longitude,location_name,temperature_c,relative_humidity,heat_index_c,risk_level,band
+2026-09-21T13:54:15.593877+00:00,33.440266,-112.06021,"Phoenix, USA",27.0,42.0,26.9,Moderate,Caution
+2026-09-22T16:38:23.768839+00:00,33.440266,-112.06021,"Phoenix, USA",31.6,29.0,30.3,Moderate,Caution
+2026-09-22T16:38:28.505879+00:00,25.13181,55.242718,"Current Location (25.11, 55.21)",32.7,69.0,42.1,Extreme,Danger
+2026-09-22T16:38:41.294651+00:00,25.13181,55.242718,"Current Location (25.11, 55.21)",32.7,69.0,42.1,Extreme,Danger

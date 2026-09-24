@@ -116,6 +116,34 @@ class TestAdvisoryEndpoint:
         assert len(data["hourly"]) == 24
         assert data["current"]["temperature_c"] == 38.3
 
+    def test_advisory_by_exact_coordinates(self, client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+        payload = _build_payload(latitude=25.2048, longitude=55.2708)
+        monkeypatch.setattr(httpx.AsyncClient, "get", AsyncMock(return_value=_fake_response(payload)))
+
+        response = client.get("/api/advisory?lat=25.2048&lon=55.2708")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["location"]["latitude"] == pytest.approx(25.2048, abs=1e-3)
+        assert data["location"]["longitude"] == pytest.approx(55.2708, abs=1e-3)
+        assert "Current Location" in data["location"]["name"]
+
+    def test_advisory_multilingual_arabic(self, client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+        payload = _build_payload()
+        monkeypatch.setattr(httpx.AsyncClient, "get", AsyncMock(return_value=_fake_response(payload)))
+
+        response = client.get("/api/advisory?city=dubai&lang=ar")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["language"] == "ar"
+        assert "ai_advisory" in data
+        assert isinstance(data["ai_advisory"], list)
+        assert len(data["ai_advisory"]) == 3
+        for bullet in data["ai_advisory"]:
+            assert isinstance(bullet, str)
+            assert len(bullet) > 0
+
     def test_role_query_param_is_honored(self, client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
         payload = _build_payload()
         monkeypatch.setattr(httpx.AsyncClient, "get", AsyncMock(return_value=_fake_response(payload)))
@@ -211,6 +239,11 @@ class TestIndexPage:
         assert "city-select" in response.text
         assert "Phoenix, USA" in response.text
         assert 'value="dubai"' in response.text
+        assert "near-me-btn" in response.text
+        assert "Near Me" in response.text
+        assert "lang-select" in response.text
+        assert "listen-btn" in response.text
+        assert "Amazon Bedrock" in response.text
 
 
 # ---------------------------------------------------------------------------

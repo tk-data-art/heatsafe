@@ -17,6 +17,7 @@ from fastapi.templating import Jinja2Templates
 
 from services import history as history_service
 from services import weather as weather_service
+from services.ai_advisory import get_safety_briefing
 from services.config import HistoryRecord, load_config
 from services.heat_index import build_advisory
 from pathlib import Path
@@ -68,26 +69,32 @@ async def health_check():
 @app.get("/api/advisory")
 async def get_advisory(
     city: str | None = Query(None, description="Preset city key, e.g. 'dubai'"),
-    lat: float | None = Query(None, description="Latitude, used if city is not provided"),
-    lon: float | None = Query(None, description="Longitude, used if city is not provided"),
+    lat: float | None = Query(None, description="Latitude; takes priority over 'city' if both are provided"),
+    lon: float | None = Query(None, description="Longitude; takes priority over 'city' if both are provided"),
     role: str | None = Query(None, description="'outdoor_worker' or 'general_public'"),
     persona: str | None = Query(None, description="Alias for 'role', used if 'role' is not provided"),
+    lang: str = Query("en", description="Target language ('en', 'ar', 'hi', 'es')"),
 ):
     """
     Return current conditions, a 24h hourly heat-index timeline, and a
     role-based safety advisory for a preset city or arbitrary coordinates.
+
+    Priority order for location: explicit `lat`/`lon` (e.g. from the
+    dashboard's 'Use My Location' feature) > preset `city` key > default
+    city (Phoenix).
     """
     resolved_role = _resolve_role(role, persona)
-    location_name = "Custom Location"
 
-    if city:
+    if lat is not None and lon is not None:
+        # Hyperlocal geolocation ('Use My Location') takes priority over preset city
+        latitude, longitude = lat, lon
+        location_name = "Current Location"
+    elif city:
         coords = weather_service.get_city_coordinates(city)
         if coords is None:
             raise HTTPException(status_code=404, detail=f"Unknown city: {city}")
         latitude, longitude = coords["lat"], coords["lon"]
         location_name = coords["name"]
-    elif lat is not None and lon is not None:
-        latitude, longitude = lat, lon
     else:
         # Default to Phoenix if nothing specified.
         coords = weather_service.get_city_coordinates("phoenix")
@@ -106,6 +113,8 @@ async def get_advisory(
         snapshot.current_relative_humidity,
         resolved_role,  # type: ignore[arg-type]
     )
+
+    ai_bullets = await get_safety_briefing(current_advisory.band, resolved_role, lang)
 
     hourly_timeline = [
         {
@@ -149,6 +158,7 @@ async def get_advisory(
                 "longitude": snapshot.longitude,
             },
             "role": resolved_role,
+            "language": lang,
             "stale_data": snapshot.stale,
             "current": {
                 "temperature_c": current_advisory.temperature_c,
@@ -165,6 +175,7 @@ async def get_advisory(
             },
             "hourly": hourly_timeline,
             "cities": weather_service.PRESET_CITIES,
+            "ai_advisory": ai_bullets,
         }
     )
 
