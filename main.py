@@ -201,4 +201,5 @@ async def index(request: Request):
         {
             "cities": weather_service.PRESET_CITIES,
         },
+        headers={"Cache-Control": "no-cache, no-store, must-revalidate, max-age=0"},
     )

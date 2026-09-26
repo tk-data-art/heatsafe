@@ -1,14 +1,23 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full bg-slate-100">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0" />
-  <title>HeatSafe | Heat-Stress Advisory Dashboard</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+  <title>HeatSafe | Hyperlocal Heat-Stress Advisory Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script>
     tailwind.config = {
       theme: {
         extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          boxShadow: {
+            '2xs': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+            'xs': '0 1px 3px 0 rgba(0, 0, 0, 0.08)',
+          },
           colors: {
             heatgreen: "#16a34a",
             heatyellow: "#eab308",
@@ -16,194 +25,575 @@
             heatred: "#dc2626",
             heatdarkred: "#7f1d1d",
           },
-        },
-      },
-    };
+        }
+      }
+    }
   </script>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    .scrollbar-thin::-webkit-scrollbar { height: 8px; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .scrollbar-thin::-webkit-scrollbar { height: 6px; }
     .scrollbar-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
   </style>
 </head>
-<body class="bg-slate-100 text-slate-800 min-w-[320px]">
 
-  <header class="bg-slate-900 text-white sticky top-0 z-10 shadow-md">
-    <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+<body class="min-h-full font-sans antialiased text-slate-900 pb-6">
+
+  <!-- =================================================================== -->
+  <!-- TOP TIER: Dark Navy Header (~48px)                                  -->
+  <!-- =================================================================== -->
+  <nav class="bg-slate-900 text-white px-6 py-3.5 shadow-sm">
+    <div class="max-w-[1280px] w-[94vw] mx-auto flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <span class="text-2xl">🌡️</span>
-        <h1 class="text-xl font-bold tracking-tight">HeatSafe</h1>
+        <span class="text-rose-500 text-lg">🛡️</span>
+        <h1 class="font-bold text-lg tracking-tight">HeatSafe</h1>
       </div>
-      <span class="text-xs sm:text-sm text-slate-300">Hyperlocal Heat-Stress Advisory</span>
+      <div class="text-xs text-slate-300 font-medium hidden sm:block">
+        Hyperlocal Heat-Stress Advisory
+      </div>
     </div>
-  </header>
+  </nav>
 
-  <main class="max-w-5xl mx-auto px-4 py-6 space-y-6">
+  <!-- =================================================================== -->
+  <!-- MAIN WORKSPACE CONTAINER (3-Tier Balanced Architecture)             -->
+  <!-- =================================================================== -->
+  <main class="max-w-[1280px] w-[94vw] mx-auto pt-3.5 pb-6 space-y-3">
 
-    <!-- Controls -->
-    <section class="bg-white rounded-2xl shadow-sm p-4 sm:p-5 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
-      <div class="flex flex-col gap-1 flex-1">
-        <label for="city-select" class="text-xs font-semibold uppercase text-slate-500">Location</label>
-        <div class="flex items-center gap-2">
-          <select id="city-select" class="w-full sm:w-64 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-800">
+    <!-- 1. TOP TIER CONTROLS STRIP -->
+    <section class="bg-white border border-slate-200 rounded-xl p-3 shadow-xs flex flex-wrap items-center justify-between gap-3">
+      <!-- Location -->
+      <div class="flex items-center gap-2 flex-1 min-w-[260px]">
+        <div class="flex-1 flex items-center rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 focus-within:border-slate-400">
+          <span class="text-xs text-slate-400 mr-1.5">📍</span>
+          <select id="city-select" class="w-full bg-transparent text-xs font-semibold text-slate-800 focus:outline-none">
             {% for key, city in cities.items() %}
-            <option value="{{ key }}" {% if key == 'phoenix' %}selected{% endif %}>{{ city.name }}</option>
+            <option value="{{ key }}" {% if key == 'dubai' %}selected{% endif %}>{{ city.name }} ({{ "%.2f"|format(city.lat) }}, {{ "%.2f"|format(city.lon) }})</option>
             {% endfor %}
           </select>
-          <button
-            id="near-me-btn"
-            type="button"
-            class="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 transition focus:outline-none focus:ring-2 focus:ring-slate-800"
-            title="Use My Location"
-          >
-            <span>📍</span> Near Me
-          </button>
         </div>
+        <button id="near-me-btn" type="button" onclick="useCurrentLocation()"
+          class="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-2xs transition"
+          title="Use My Location">
+          📍 Near Me
+        </button>
       </div>
 
-      <div class="flex flex-col gap-1">
-        <span class="text-xs font-semibold uppercase text-slate-500">I am a...</span>
-        <div class="inline-flex rounded-lg border border-slate-300 overflow-hidden">
-          <button id="role-general" class="persona-btn px-4 py-2 text-sm font-medium bg-slate-900 text-white transition" data-role="general_public">
-            General Public
-          </button>
-          <button id="role-worker" class="persona-btn px-4 py-2 text-sm font-medium bg-white text-slate-700 transition" data-role="outdoor_worker">
-            Outdoor Worker
-          </button>
-        </div>
+      <!-- Persona Toggle -->
+      <div class="inline-flex rounded-lg bg-slate-100 p-1 text-xs font-semibold">
+        <button id="persona-public" class="persona-btn px-3 py-1 rounded-md bg-slate-900 text-white shadow-xs transition" data-role="general_public" data-persona="public" onclick="setPersona('general_public')">
+          General Public
+        </button>
+        <button id="persona-worker" class="persona-btn px-3 py-1 rounded-md text-slate-600 hover:text-slate-900 transition" data-role="outdoor_worker" data-persona="worker" onclick="setPersona('outdoor_worker')">
+          Outdoor Worker
+        </button>
       </div>
 
-      <div class="flex flex-col gap-1">
-        <label for="lang-select" class="text-xs font-semibold uppercase text-slate-500">Language</label>
-        <select id="lang-select" class="w-full sm:w-36 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-800">
+      <!-- Language & Export -->
+      <div class="flex items-center gap-2">
+        <select id="lang-select"
+          class="text-xs font-semibold bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-700 shadow-2xs focus:outline-none">
           <option value="en" selected>English (en)</option>
           <option value="ar">العربية (ar)</option>
           <option value="hi">हिंदी (hi)</option>
           <option value="es">Español (es)</option>
         </select>
-      </div>
-
-      <div class="flex flex-col gap-1">
-        <span class="text-xs font-semibold uppercase text-slate-500 sm:invisible">Export</span>
-        <a
-          id="export-history-link"
-          href="/api/history/export"
-          download="heatsafe_history.csv"
-          class="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 transition"
-        >
-          <span>⬇️</span> Export CSV History
+        <a id="export-history-link" href="/api/history/export" download="heatsafe_history.csv"
+          class="inline-flex items-center gap-1.5 text-xs font-semibold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-3 py-1.5 rounded-lg shadow-2xs transition">
+          <span>📥</span> Export CSV
         </a>
       </div>
     </section>
 
     <!-- Stale data warning -->
-    <div id="stale-warning" class="hidden bg-yellow-50 border border-yellow-300 text-yellow-800 text-sm rounded-xl px-4 py-2">
+    <div id="stale-warning" class="hidden bg-amber-50 border border-amber-300 text-amber-900 text-xs rounded-xl px-4 py-2.5 shadow-2xs font-medium">
       ⚠️ Showing cached data — live weather service is temporarily unavailable.
     </div>
 
-    <!-- Risk Banner -->
-    <section id="risk-banner" class="rounded-2xl shadow-md p-6 text-white transition-colors duration-500 bg-slate-400">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <!-- 1. TOP TIER HERO DANGER CARD -->
+    <section id="risk-banner" class="bg-red-600 text-white rounded-xl p-5 sm:p-6 shadow-sm transition-colors duration-500">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <p id="location-name" class="text-sm font-medium opacity-90">Loading location…</p>
-          <h2 id="risk-band" class="text-3xl sm:text-4xl font-extrabold mt-1">—</h2>
-          <p id="risk-level" class="text-sm mt-1 opacity-90">Risk level: —</p>
+          <div id="location-name" class="text-xs font-bold uppercase tracking-wider text-white/90">
+            {{ (advisory.location.name ~ ' (' ~ "%.2f"|format(advisory.location.latitude) ~ ', ' ~ "%.2f"|format(advisory.location.longitude) ~ ')') if advisory else 'Current Location (25.20, 55.30)' }}
+          </div>
+          <h2 id="risk-band" class="text-4xl sm:text-5xl font-extrabold tracking-tight mt-1">
+            {{ advisory.current.band if advisory else 'Danger' }}
+          </h2>
+          <div id="risk-level" class="text-xs font-medium text-white/90 mt-1">
+            Risk level: {{ advisory.current.risk_level if advisory else 'Extreme' }}
+          </div>
         </div>
-        <div class="text-right">
-          <p class="text-xs uppercase opacity-80">Heat Index</p>
-          <p id="heat-index" class="text-4xl sm:text-5xl font-black">—</p>
+        <div class="text-left sm:text-right">
+          <div class="text-xs font-bold uppercase tracking-wider text-white/80">NOAA Heat Index</div>
+          <div id="heat-index" class="text-5xl sm:text-6xl font-black tracking-tight mt-0.5 tabular-nums">
+            {{ (advisory.current.heat_index_c ~ '°C') if advisory else '47.7°C' }}
+          </div>
+          <div id="ambient-reference" class="text-xs font-medium text-white/85 mt-0.5">
+            Air Temp: {{ (advisory.current.temperature_c ~ '°C') if advisory else '35.2°C' }} ({{ (advisory.current.relative_humidity ~ '% RH') if advisory else '64% RH' }})
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- Current Conditions -->
-    <section class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      <div class="bg-white rounded-xl shadow-sm p-4 text-center">
-        <p class="text-xs uppercase text-slate-500">Temperature</p>
-        <p id="stat-temp" class="text-xl font-bold mt-1">—</p>
-      </div>
-      <div class="bg-white rounded-xl shadow-sm p-4 text-center">
-        <p class="text-xs uppercase text-slate-500">Humidity</p>
-        <p id="stat-humidity" class="text-xl font-bold mt-1">—</p>
-      </div>
-      <div class="bg-white rounded-xl shadow-sm p-4 text-center">
-        <p class="text-xs uppercase text-slate-500">Wind</p>
-        <p id="stat-wind" class="text-xl font-bold mt-1">—</p>
-      </div>
-      <div class="bg-white rounded-xl shadow-sm p-4 text-center">
-        <p class="text-xs uppercase text-slate-500">Coordinates</p>
-        <p id="stat-coords" class="text-xs font-semibold mt-1">—</p>
-      </div>
-    </section>
+    <!-- =================================================================== -->
+    <!-- 2. MIDDLE TIER (Balanced 2-Column Grid: 6 Cols & 6 Cols)           -->
+    <!-- =================================================================== -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">
 
-    <!-- Action Cards -->
-    <section class="grid sm:grid-cols-2 gap-4">
-      <div class="bg-white rounded-2xl shadow-sm p-5">
-        <h3 class="font-bold text-slate-700 flex items-center gap-2"><span>💧</span> Hydration Guidance</h3>
-        <p id="hydration-rate" class="text-2xl font-extrabold text-sky-600 mt-2">—</p>
-        <p class="text-xs text-slate-500 mt-1">Recommended fluid intake per hour of exposure</p>
-      </div>
-      <div class="bg-white rounded-2xl shadow-sm p-5">
-        <h3 class="font-bold text-slate-700 flex items-center gap-2"><span>⏱️</span> Work / Rest Ratio</h3>
-        <p id="work-rest" class="text-lg font-extrabold text-slate-800 mt-2">—</p>
-        <p class="text-xs text-slate-500 mt-1">OSHA-aligned recommendation for this heat level</p>
-      </div>
-    </section>
+      <!-- Left Column (6 Cols): Guidance & Bedrock Advisory -->
+      <div class="lg:col-span-6 flex flex-col justify-between gap-3.5">
 
-    <!-- Tactical Safety Advisory (Amazon Bedrock) -->
-    <section class="bg-white rounded-2xl shadow-sm p-5">
-      <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-        <div class="flex items-center gap-2">
-          <h3 class="font-bold text-slate-700">📋 Tactical Safety Advisory</h3>
-          <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-            ⚡ Powered by Amazon Bedrock
-          </span>
+        <!-- Hydration & Work/Rest Row -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
+            <div class="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider">
+              <span>💧</span> Hydration Guidance
+            </div>
+            <div id="hydration-rate" class="text-2xl font-black text-slate-900 mt-2 tabular-nums">
+              {{ (advisory.current.hydration_l_per_hr ~ ' L/hr') if advisory else '1 L/hr' }}
+            </div>
+            <div class="text-xs text-slate-500 mt-1">Recommended fluid intake per hour of exposure</div>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
+            <div class="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider">
+              <span>⏱️</span> Work / Rest Ratio
+            </div>
+            <div id="work-rest" class="text-base font-bold text-slate-900 mt-2 leading-snug">
+              {{ advisory.current.work_rest_ratio if advisory else 'Cease strenuous work / seek shelter' }}
+            </div>
+            <div class="text-xs text-slate-500 mt-1">OSHA-aligned recommendation</div>
+          </div>
         </div>
-        <button
-          id="listen-btn"
-          type="button"
-          class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-300 transition focus:outline-none focus:ring-2 focus:ring-slate-800"
-          title="Listen to audio briefing"
-        >
-          <span>🔊</span> Listen
-        </button>
+
+        <!-- Tactical AI Advisory Card -->
+        <section class="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex-1 flex flex-col justify-between">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-bold text-slate-900">Tactical Safety Advisory</span>
+              <span class="text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full">
+                Powered by Amazon Bedrock
+              </span>
+            </div>
+            <button id="listen-btn" type="button" onclick="speakAdvisory()"
+              class="text-xs font-semibold bg-white border border-slate-200 hover:bg-slate-50 px-3 py-1 rounded-lg text-slate-700 shadow-2xs inline-flex items-center gap-1.5 transition"
+              title="Listen to audio briefing">
+              <span>🔊</span><span>Listen</span>
+            </button>
+          </div>
+          <div id="advisory-container" dir="ltr" class="my-auto py-2">
+            <ul id="advisory-list" class="space-y-2.5 text-xs sm:text-[13px] text-slate-700 leading-relaxed list-none">
+              {% if advisory and (advisory.ai_advisory or advisory.current.micro_advisory) %}
+                {% for item in (advisory.ai_advisory or advisory.current.micro_advisory) %}
+                  <li class="flex items-start gap-2">
+                    <span class="text-red-500 font-bold">•</span>
+                    <span>{{ item }}</span>
+                  </li>
+                {% endfor %}
+              {% else %}
+                <li class="flex items-start gap-2">
+                  <span class="text-red-500 font-bold">•</span>
+                  <span>Drink one liter of cool electrolyte water every hour.</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="text-red-500 font-bold">•</span>
+                  <span>Take a mandatory 40-minute shaded rest break every hour.</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <span class="text-red-500 font-bold">•</span>
+                  <span>Stop work immediately if you feel dizzy, nauseous, or stop sweating.</span>
+                </li>
+              {% endif %}
+            </ul>
+          </div>
+          <div class="pt-3 border-t border-slate-100 text-xs text-slate-400 flex items-center justify-between">
+            <span>Runtime: Claude 3 Haiku</span>
+            <span>Speech Rate: 0.92</span>
+          </div>
+        </section>
+
       </div>
-      <div id="advisory-container" dir="ltr">
-        <ul id="advisory-list" class="space-y-2 text-sm text-slate-700 list-none">
-          <li class="text-slate-400">Loading advisory…</li>
-        </ul>
+
+      <!-- Right Column (6 Cols): Environmental Telemetry in a Clean 2x2 Grid -->
+      <div class="lg:col-span-6 flex flex-col justify-between">
+        <section class="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between h-full">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <span class="text-xs font-bold text-slate-900 uppercase tracking-wider">Environmental Telemetry</span>
+            <span class="text-xs text-slate-500 font-medium">Real-Time Sensor Feed</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3.5 my-auto py-2">
+            <!-- Temperature -->
+            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-4">
+              <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Temperature</div>
+              <div id="stat-temp" class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1 tabular-nums">
+                {{ (advisory.current.temperature_c ~ '°C') if advisory else '36.3°C' }}
+              </div>
+              <div class="text-xs text-slate-500 mt-1">Dry-bulb ambient air</div>
+            </div>
+
+            <!-- Humidity -->
+            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-4">
+              <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Humidity</div>
+              <div id="stat-humidity" class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1 tabular-nums">
+                {{ (advisory.current.relative_humidity ~ '%') if advisory else '61%' }}
+              </div>
+              <div class="text-xs text-slate-500 mt-1">Relative humidity level</div>
+            </div>
+
+            <!-- Wind Speed -->
+            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-4">
+              <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Wind Speed</div>
+              <div id="stat-wind" class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1 tabular-nums">
+                {{ (advisory.current.wind_speed_kmh ~ ' km/h') if advisory else '18 km/h' }}
+              </div>
+              <div class="text-xs text-slate-500 mt-1">Surface airflow velocity</div>
+            </div>
+
+            <!-- Coordinates -->
+            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-4">
+              <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Coordinates</div>
+              <div id="stat-coords" class="text-lg sm:text-xl font-bold text-slate-900 mt-1 truncate font-mono tabular-nums">
+                {{ (advisory.location.latitude ~ ', ' ~ advisory.location.longitude) if advisory else '25.06, 55.18' }}
+              </div>
+              <div class="text-xs text-slate-500 mt-1">Station GPS location</div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-slate-100 text-xs text-slate-400 flex items-center justify-between">
+            <span>Authority: Open-Meteo High-Res</span>
+            <span>WGS84 Datum</span>
+          </div>
+        </section>
+      </div>
+
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- 3. BOTTOM TIER: 24-Hour Heat Index Timeline (Full Width)           -->
+    <!-- =================================================================== -->
+    <section class="w-full bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+        <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">
+          24-Hour Heat Index Timeline
+        </h3>
+        <div id="timeline-status-pill" class="text-xs font-mono text-slate-600 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200 inline-flex items-center gap-1.5 self-start sm:self-auto">
+          <span class="text-red-500 font-bold">●</span> Danger Threshold active until 22:00 • Overnight Relief: 23:00 (&lt;39°C)
+        </div>
+      </div>
+
+      <div id="timeline" class="flex gap-2.5 overflow-x-auto pb-3 pt-1 w-full scrollbar-thin scrollbar-thumb-slate-300">
+        {% if advisory and advisory.hourly %}
+          {% for hour in advisory.hourly %}
+            {% set item = hour %}
+            {% set hour_int = item.time[-5:-3]|int if ':' in item.time else 12 %}
+            {% set is_night = hour_int >= 21 or hour_int <= 5 %}
+            {% if loop.first %}
+              <div class="shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden bg-red-50/70 border-2 border-red-500 shadow-xs ring-2 ring-red-100">
+                <div class="flex flex-col items-center gap-0.5">
+                  <span class="bg-red-600 text-white font-mono font-bold text-[9px] uppercase px-1.5 py-0.5 rounded tracking-wider">NOW</span>
+                  <div class="text-xs font-bold text-red-900">{{ item.time[-5:] if ':' in item.time else item.time }}</div>
+                </div>
+                <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full {{ item.color_class or 'bg-red-500' }}"></div>
+                <div class="text-xs sm:text-sm font-extrabold text-red-950 font-mono tabular-nums">{{ item.heat_index_c }}°</div>
+                <div class="mt-1">
+                  <span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded {% if 'Danger' in item.band %}bg-red-100 text-red-700{% elif 'Extreme' in item.band %}bg-amber-100 text-amber-800{% elif 'Caution' in item.band %}bg-yellow-100 text-yellow-800{% else %}bg-emerald-100 text-emerald-800{% endif %}">
+                    {{ 'Ext Caution' if 'Extreme' in item.band else item.band }}
+                  </span>
+                </div>
+              </div>
+            {% else %}
+              <div class="shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden {{ 'bg-slate-50/80 border border-slate-200/60 text-slate-600' if is_night else 'bg-white border border-slate-200' }}">
+                <div class="text-xs {{ 'text-slate-500 font-medium flex items-center justify-center gap-0.5' if is_night else 'text-slate-700 font-medium' }}">
+                  {% if is_night %}<span class="text-[10px]">🌙</span>{% endif %}<span>{{ item.time[-5:] if ':' in item.time else item.time }}</span>
+                </div>
+                <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full {{ item.color_class or 'bg-emerald-500' }}"></div>
+                <div class="text-xs font-bold text-slate-900 tabular-nums">{{ item.heat_index_c }}°</div>
+                <div class="mt-1">
+                  <span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded {% if 'Danger' in item.band %}bg-red-100 text-red-700{% elif 'Extreme' in item.band %}bg-amber-100 text-amber-800{% elif 'Caution' in item.band %}bg-yellow-100 text-yellow-800{% else %}bg-emerald-100 text-emerald-800{% endif %}">
+                    {{ 'Ext Caution' if 'Extreme' in item.band else item.band }}
+                  </span>
+                </div>
+              </div>
+            {% endif %}
+          {% endfor %}
+        {% else %}
+          <!-- 14:00 NOW -->
+          <div class="shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden bg-red-50/70 border-2 border-red-500 shadow-xs ring-2 ring-red-100">
+            <div class="flex flex-col items-center gap-0.5">
+              <span class="bg-red-600 text-white font-mono font-bold text-[9px] uppercase px-1.5 py-0.5 rounded tracking-wider">NOW</span>
+              <div class="text-xs font-bold text-red-900">14:00</div>
+            </div>
+            <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full bg-red-600"></div>
+            <div class="text-xs sm:text-sm font-extrabold text-red-950 font-mono tabular-nums">45.4°</div>
+            <div class="mt-1">
+              <span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-red-100 text-red-700">Danger</span>
+            </div>
+          </div>
+          <!-- 15:00 -->
+          <div class="shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden bg-white border border-slate-200">
+            <div class="text-xs text-slate-700 font-medium">15:00</div>
+            <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full bg-red-500"></div>
+            <div class="text-xs font-bold text-slate-900 tabular-nums">44.8°</div>
+            <div class="mt-1">
+              <span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-red-100 text-red-700">Danger</span>
+            </div>
+          </div>
+          <!-- 16:00 -->
+          <div class="shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden bg-white border border-slate-200">
+            <div class="text-xs text-slate-700 font-medium">16:00</div>
+            <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full bg-orange-500"></div>
+            <div class="text-xs font-bold text-slate-900 tabular-nums">43.2°</div>
+            <div class="mt-1">
+              <span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-amber-100 text-amber-800">Ext Caution</span>
+            </div>
+          </div>
+          <!-- 17:00 -->
+          <div class="shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden bg-white border border-slate-200">
+            <div class="text-xs text-slate-700 font-medium">17:00</div>
+            <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full bg-orange-500"></div>
+            <div class="text-xs font-bold text-slate-900 tabular-nums">41.5°</div>
+            <div class="mt-1">
+              <span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-amber-100 text-amber-800">Ext Caution</span>
+            </div>
+          </div>
+          <!-- 18:00 -->
+          <div class="shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden bg-white border border-slate-200">
+            <div class="text-xs text-slate-700 font-medium">18:00</div>
+            <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full bg-amber-500"></div>
+            <div class="text-xs font-bold text-slate-900 tabular-nums">39.0°</div>
+            <div class="mt-1">
+              <span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-yellow-100 text-yellow-800">Caution</span>
+            </div>
+          </div>
+          <!-- 19:00 -->
+          <div class="shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden bg-white border border-slate-200">
+            <div class="text-xs text-slate-700 font-medium">19:00</div>
+            <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full bg-amber-500"></div>
+            <div class="text-xs font-bold text-slate-900 tabular-nums">37.2°</div>
+            <div class="mt-1">
+              <span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-yellow-100 text-yellow-800">Caution</span>
+            </div>
+          </div>
+          <!-- 20:00 -->
+          <div class="shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden bg-white border border-slate-200">
+            <div class="text-xs text-slate-700 font-medium">20:00</div>
+            <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full bg-amber-500"></div>
+            <div class="text-xs font-bold text-slate-900 tabular-nums">35.8°</div>
+            <div class="mt-1">
+              <span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-yellow-100 text-yellow-800">Caution</span>
+            </div>
+          </div>
+          <!-- 21:00 🌙 -->
+          <div class="shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden bg-slate-50/80 border border-slate-200/60 text-slate-600">
+            <div class="text-xs text-slate-500 font-medium flex items-center justify-center gap-0.5">
+              <span class="text-[10px]">🌙</span><span>21:00</span>
+            </div>
+            <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full bg-amber-500"></div>
+            <div class="text-xs font-bold text-slate-900 tabular-nums">34.5°</div>
+            <div class="mt-1">
+              <span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-yellow-100 text-yellow-800">Caution</span>
+            </div>
+          </div>
+          <!-- 22:00 🌙 -->
+          <div class="shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden bg-slate-50/80 border border-slate-200/60 text-slate-600">
+            <div class="text-xs text-slate-500 font-medium flex items-center justify-center gap-0.5">
+              <span class="text-[10px]">🌙</span><span>22:00</span>
+            </div>
+            <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full bg-amber-500"></div>
+            <div class="text-xs font-bold text-slate-900 tabular-nums">33.0°</div>
+            <div class="mt-1">
+              <span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-yellow-100 text-yellow-800">Caution</span>
+            </div>
+          </div>
+          <!-- 23:00 🌙 -->
+          <div class="shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden bg-slate-50/80 border border-slate-200/60 text-slate-600">
+            <div class="text-xs text-slate-500 font-medium flex items-center justify-center gap-0.5">
+              <span class="text-[10px]">🌙</span><span>23:00</span>
+            </div>
+            <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full bg-emerald-500"></div>
+            <div class="text-xs font-bold text-slate-900 tabular-nums">31.5°</div>
+            <div class="mt-1">
+              <span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-emerald-100 text-emerald-800">Normal</span>
+            </div>
+          </div>
+          <!-- 00:00 🌙 -->
+          <div class="shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden bg-slate-50/80 border border-slate-200/60 text-slate-600">
+            <div class="text-xs text-slate-500 font-medium flex items-center justify-center gap-0.5">
+              <span class="text-[10px]">🌙</span><span>00:00</span>
+            </div>
+            <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full bg-emerald-500"></div>
+            <div class="text-xs font-bold text-slate-900 tabular-nums">30.1°</div>
+            <div class="mt-1">
+              <span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-emerald-100 text-emerald-800">Normal</span>
+            </div>
+          </div>
+          <!-- 01:00 🌙 -->
+          <div class="shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden bg-slate-50/80 border border-slate-200/60 text-slate-600">
+            <div class="text-xs text-slate-500 font-medium flex items-center justify-center gap-0.5">
+              <span class="text-[10px]">🌙</span><span>01:00</span>
+            </div>
+            <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full bg-emerald-500"></div>
+            <div class="text-xs font-bold text-slate-900 tabular-nums">29.8°</div>
+            <div class="mt-1">
+              <span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-emerald-100 text-emerald-800">Normal</span>
+            </div>
+          </div>
+          <!-- 02:00 🌙 -->
+          <div class="shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden bg-slate-50/80 border border-slate-200/60 text-slate-600">
+            <div class="text-xs text-slate-500 font-medium flex items-center justify-center gap-0.5">
+              <span class="text-[10px]">🌙</span><span>02:00</span>
+            </div>
+            <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full bg-emerald-500"></div>
+            <div class="text-xs font-bold text-slate-900 tabular-nums">29.2°</div>
+            <div class="mt-1">
+              <span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-emerald-100 text-emerald-800">Normal</span>
+            </div>
+          </div>
+          <!-- 03:00 🌙 -->
+          <div class="shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden bg-slate-50/80 border border-slate-200/60 text-slate-600">
+            <div class="text-xs text-slate-500 font-medium flex items-center justify-center gap-0.5">
+              <span class="text-[10px]">🌙</span><span>03:00</span>
+            </div>
+            <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full bg-emerald-500"></div>
+            <div class="text-xs font-bold text-slate-900 tabular-nums">28.9°</div>
+            <div class="mt-1">
+              <span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-emerald-100 text-emerald-800">Normal</span>
+            </div>
+          </div>
+          <!-- 04:00 🌙 -->
+          <div class="shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden bg-slate-50/80 border border-slate-200/60 text-slate-600">
+            <div class="text-xs text-slate-500 font-medium flex items-center justify-center gap-0.5">
+              <span class="text-[10px]">🌙</span><span>04:00</span>
+            </div>
+            <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full bg-emerald-500"></div>
+            <div class="text-xs font-bold text-slate-900 tabular-nums">28.5°</div>
+            <div class="mt-1">
+              <span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-emerald-100 text-emerald-800">Normal</span>
+            </div>
+          </div>
+          <!-- 05:00 🌙 -->
+          <div class="shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden bg-slate-50/80 border border-slate-200/60 text-slate-600">
+            <div class="text-xs text-slate-500 font-medium flex items-center justify-center gap-0.5">
+              <span class="text-[10px]">🌙</span><span>05:00</span>
+            </div>
+            <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full bg-emerald-500"></div>
+            <div class="text-xs font-bold text-slate-900 tabular-nums">28.4°</div>
+            <div class="mt-1">
+              <span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-emerald-100 text-emerald-800">Normal</span>
+            </div>
+          </div>
+          <!-- 06:00 -->
+          <div class="shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden bg-white border border-slate-200">
+            <div class="text-xs text-slate-700 font-medium">06:00</div>
+            <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full bg-emerald-500"></div>
+            <div class="text-xs font-bold text-slate-900 tabular-nums">29.5°</div>
+            <div class="mt-1">
+              <span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-emerald-100 text-emerald-800">Normal</span>
+            </div>
+          </div>
+          <!-- 07:00 -->
+          <div class="shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden bg-white border border-slate-200">
+            <div class="text-xs text-slate-700 font-medium">07:00</div>
+            <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full bg-emerald-500"></div>
+            <div class="text-xs font-bold text-slate-900 tabular-nums">31.0°</div>
+            <div class="mt-1">
+              <span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-emerald-100 text-emerald-800">Normal</span>
+            </div>
+          </div>
+          <!-- 08:00 -->
+          <div class="shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden bg-white border border-slate-200">
+            <div class="text-xs text-slate-700 font-medium">08:00</div>
+            <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full bg-amber-500"></div>
+            <div class="text-xs font-bold text-slate-900 tabular-nums">32.2°</div>
+            <div class="mt-1">
+              <span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-yellow-100 text-yellow-800">Caution</span>
+            </div>
+          </div>
+          <!-- 09:00 -->
+          <div class="shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden bg-white border border-slate-200">
+            <div class="text-xs text-slate-700 font-medium">09:00</div>
+            <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full bg-amber-500"></div>
+            <div class="text-xs font-bold text-slate-900 tabular-nums">34.5°</div>
+            <div class="mt-1">
+              <span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-yellow-100 text-yellow-800">Caution</span>
+            </div>
+          </div>
+          <!-- 10:00 -->
+          <div class="shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden bg-white border border-slate-200">
+            <div class="text-xs text-slate-700 font-medium">10:00</div>
+            <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full bg-amber-500"></div>
+            <div class="text-xs font-bold text-slate-900 tabular-nums">37.1°</div>
+            <div class="mt-1">
+              <span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-yellow-100 text-yellow-800">Caution</span>
+            </div>
+          </div>
+          <!-- 11:00 -->
+          <div class="shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden bg-white border border-slate-200">
+            <div class="text-xs text-slate-700 font-medium">11:00</div>
+            <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full bg-orange-500"></div>
+            <div class="text-xs font-bold text-slate-900 tabular-nums">40.2°</div>
+            <div class="mt-1">
+              <span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-amber-100 text-amber-800">Ext Caution</span>
+            </div>
+          </div>
+          <!-- 12:00 -->
+          <div class="shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden bg-white border border-slate-200">
+            <div class="text-xs text-slate-700 font-medium">12:00</div>
+            <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full bg-orange-500"></div>
+            <div class="text-xs font-bold text-slate-900 tabular-nums">43.8°</div>
+            <div class="mt-1">
+              <span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-amber-100 text-amber-800">Ext Caution</span>
+            </div>
+          </div>
+          <!-- 13:00 -->
+          <div class="shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden bg-white border border-slate-200">
+            <div class="text-xs text-slate-700 font-medium">13:00</div>
+            <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full bg-red-500"></div>
+            <div class="text-xs font-bold text-slate-900 tabular-nums">45.0°</div>
+            <div class="mt-1">
+              <span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-red-100 text-red-700">Danger</span>
+            </div>
+          </div>
+        {% endif %}
       </div>
     </section>
 
-    <!-- 24h Timeline -->
-    <section class="bg-white rounded-2xl shadow-sm p-5">
-      <h3 class="font-bold text-slate-700 mb-3">📈 24-Hour Heat Index Timeline</h3>
-      <div id="timeline" class="flex gap-2 overflow-x-auto scrollbar-thin pb-2">
-        <p class="text-slate-400 text-sm">Loading timeline…</p>
-      </div>
-    </section>
-
-    <footer class="text-center text-xs text-slate-400 pt-4 pb-8">
-      Data via Open-Meteo · Heat Index per NOAA Rothfusz regression · Not a substitute for official emergency guidance.
+    <!-- Clean micro-footer at the base -->
+    <footer class="text-center text-xs text-slate-500 font-medium py-2">
+      HeatSafe Hyperlocal Heat-Stress Advisory • Data ingested via Open-Meteo &amp; NOAA • Powered by Amazon Bedrock
     </footer>
+
   </main>
 
+  <!-- =================================================================== -->
+  <!-- CLIENT LOGIC: Dynamic Advisory, Geolocation & Audio Synthesis       -->
+  <!-- =================================================================== -->
   <script>
     const COLOR_MAP = {
-      green: { bg: "bg-heatgreen", text: "text-heatgreen" },
-      yellow: { bg: "bg-heatyellow", text: "text-heatyellow" },
-      orange: { bg: "bg-heatorange", text: "text-heatorange" },
-      red: { bg: "bg-heatred", text: "text-heatred" },
-      darkred: { bg: "bg-heatdarkred", text: "text-heatdarkred" },
+      green: { bg: "bg-emerald-600", text: "text-emerald-600", dot: "bg-emerald-500", badge: "text-emerald-700" },
+      yellow: { bg: "bg-amber-500", text: "text-amber-500", dot: "bg-amber-500", badge: "text-amber-700" },
+      orange: { bg: "bg-orange-600", text: "text-orange-600", dot: "bg-orange-500", badge: "text-orange-700" },
+      red: { bg: "bg-red-600", text: "text-red-600", dot: "bg-red-500", badge: "text-red-700" },
+      darkred: { bg: "bg-red-900", text: "text-red-900", dot: "bg-red-900", badge: "text-red-900" },
     };
 
-    const BANNER_BASE_CLASSES = "rounded-2xl shadow-md p-6 text-white transition-colors duration-500";
+    const BANNER_BASE_CLASSES = "text-white rounded-xl p-5 sm:p-6 shadow-sm transition-colors duration-500";
 
     let currentCity = document.getElementById("city-select").value;
     let currentRole = "general_public";
     let currentLang = document.getElementById("lang-select") ? document.getElementById("lang-select").value : "en";
     let currentCoords = null;
-    let currentAiAdvisory = [];
+    let currentAiAdvisory = [
+      {% if advisory and (advisory.ai_advisory or advisory.current.micro_advisory) %}
+        {% for item in (advisory.ai_advisory or advisory.current.micro_advisory) %}
+          {{ item|tojson }},
+        {% endfor %}
+      {% else %}
+        "Drink one liter of cool electrolyte water every hour.",
+        "Take a mandatory 40-minute shaded rest break every hour.",
+        "Stop work immediately if you feel dizzy, nauseous, or stop sweating."
+      {% endif %}
+    ];
 
     const LANG_BCP47 = {
       en: "en-US",
@@ -214,28 +604,36 @@
 
     function setPersonaButtons(role) {
       currentRole = role;
-      const general = document.getElementById("role-general");
-      const worker = document.getElementById("role-worker");
-      const activeClasses = ["bg-slate-900", "text-white"];
-      const inactiveClasses = ["bg-white", "text-slate-700"];
+      const general = document.getElementById("persona-public") || document.getElementById("role-general");
+      const worker = document.getElementById("persona-worker") || document.getElementById("role-worker");
+      if (!general || !worker) return;
 
-      [general, worker].forEach((btn) => {
-        activeClasses.forEach((c) => btn.classList.remove(c));
-        inactiveClasses.forEach((c) => btn.classList.remove(c));
-      });
+      const activeClasses = ["bg-slate-900", "text-white", "shadow-xs"];
+      const inactiveClasses = ["text-slate-600", "hover:text-slate-900"];
 
-      if (role === "general_public") {
-        activeClasses.forEach((c) => general.classList.add(c));
-        inactiveClasses.forEach((c) => worker.classList.add(c));
-      } else {
+      if (role === "outdoor_worker") {
         activeClasses.forEach((c) => worker.classList.add(c));
+        inactiveClasses.forEach((c) => worker.classList.remove(c));
+        activeClasses.forEach((c) => general.classList.remove(c));
         inactiveClasses.forEach((c) => general.classList.add(c));
+      } else {
+        activeClasses.forEach((c) => general.classList.add(c));
+        inactiveClasses.forEach((c) => general.classList.remove(c));
+        activeClasses.forEach((c) => worker.classList.remove(c));
+        inactiveClasses.forEach((c) => worker.classList.add(c));
       }
+    }
+
+    function setPersona(role) {
+      setPersonaButtons(role);
+      loadAdvisory();
     }
 
     async function loadAdvisory() {
       const banner = document.getElementById("risk-banner");
-      banner.className = BANNER_BASE_CLASSES + " bg-slate-400";
+      if (banner) {
+        banner.className = BANNER_BASE_CLASSES + " bg-slate-400";
+      }
 
       try {
         let url;
@@ -250,8 +648,17 @@
         render(data);
       } catch (err) {
         console.error(err);
-        document.getElementById("risk-band").textContent = "Unavailable";
-        document.getElementById("risk-level").textContent = "Could not load advisory data.";
+        const riskBand = document.getElementById("risk-band");
+        const riskLevel = document.getElementById("risk-level");
+        if (riskBand) riskBand.textContent = "Unavailable";
+        if (riskLevel) riskLevel.textContent = "Could not load advisory data.";
+      } finally {
+        const listenBtn = document.getElementById("listen-btn");
+        if (listenBtn && !(window.speechSynthesis && (window.speechSynthesis.speaking || window.speechSynthesis.pending))) {
+          listenBtn.disabled = false;
+          listenBtn.classList.remove("opacity-60", "cursor-not-allowed");
+          listenBtn.innerHTML = '<span>🔊</span><span>Listen</span>';
+        }
       }
     }
 
@@ -259,25 +666,52 @@
       const c = data.current;
       const colorTokens = COLOR_MAP[c.color] || COLOR_MAP.green;
 
-      document.getElementById("stale-warning").classList.toggle("hidden", !data.stale_data);
+      const staleWarning = document.getElementById("stale-warning");
+      if (staleWarning) {
+        staleWarning.classList.toggle("hidden", !data.stale_data);
+      }
 
-      document.getElementById("location-name").textContent =
-        `${data.location.name} (${data.location.latitude.toFixed(2)}, ${data.location.longitude.toFixed(2)})`;
-      document.getElementById("risk-band").textContent = c.band;
-      document.getElementById("risk-level").textContent = `Risk level: ${c.risk_level}`;
-      document.getElementById("heat-index").textContent = `${c.heat_index_c}°C`;
+      const locName = document.getElementById("location-name");
+      if (locName) {
+        locName.textContent = `${data.location.name} (${data.location.latitude.toFixed(2)}, ${data.location.longitude.toFixed(2)})`;
+      }
+
+      const riskBand = document.getElementById("risk-band");
+      if (riskBand) riskBand.textContent = c.band;
+
+      const riskLevel = document.getElementById("risk-level");
+      if (riskLevel) riskLevel.textContent = `Risk level: ${c.risk_level}`;
+
+      const heatIndex = document.getElementById("heat-index");
+      if (heatIndex) heatIndex.textContent = `${c.heat_index_c}°C`;
+
+      const ambientRef = document.getElementById("ambient-reference");
+      if (ambientRef) ambientRef.textContent = `Air Temp: ${c.temperature_c}°C (${c.relative_humidity}% RH)`;
 
       const banner = document.getElementById("risk-banner");
-      banner.className = `${BANNER_BASE_CLASSES} ${colorTokens.bg}`;
+      if (banner) {
+        banner.className = `${BANNER_BASE_CLASSES} ${colorTokens.bg}`;
+      }
 
-      document.getElementById("stat-temp").textContent = `${c.temperature_c}°C`;
-      document.getElementById("stat-humidity").textContent = `${c.relative_humidity}%`;
-      document.getElementById("stat-wind").textContent = `${c.wind_speed_kmh} km/h`;
-      document.getElementById("stat-coords").textContent =
-        `${data.location.latitude.toFixed(2)}, ${data.location.longitude.toFixed(2)}`;
+      const statTemp = document.getElementById("stat-temp");
+      if (statTemp) statTemp.textContent = `${c.temperature_c}°C`;
 
-      document.getElementById("hydration-rate").textContent = `${c.hydration_l_per_hr} L/hr`;
-      document.getElementById("work-rest").textContent = c.work_rest_ratio;
+      const statHumidity = document.getElementById("stat-humidity");
+      if (statHumidity) statHumidity.textContent = `${c.relative_humidity}%`;
+
+      const statWind = document.getElementById("stat-wind");
+      if (statWind) statWind.textContent = `${c.wind_speed_kmh} km/h`;
+
+      const statCoords = document.getElementById("stat-coords");
+      if (statCoords) {
+        statCoords.textContent = `${data.location.latitude.toFixed(2)}, ${data.location.longitude.toFixed(2)}`;
+      }
+
+      const hydrationRate = document.getElementById("hydration-rate");
+      if (hydrationRate) hydrationRate.textContent = `${c.hydration_l_per_hr} L/hr`;
+
+      const workRest = document.getElementById("work-rest");
+      if (workRest) workRest.textContent = c.work_rest_ratio;
 
       currentAiAdvisory = data.ai_advisory || c.micro_advisory || [];
       const advisoryContainer = document.getElementById("advisory-container");
@@ -286,204 +720,451 @@
       }
 
       const advisoryList = document.getElementById("advisory-list");
-      advisoryList.innerHTML = "";
-      currentAiAdvisory.forEach((item) => {
-        const li = document.createElement("li");
-        li.className = "flex items-start gap-2";
-        li.innerHTML = `<span class="mt-0.5">•</span><span>${item}</span>`;
-        advisoryList.appendChild(li);
-      });
+      if (advisoryList) {
+        advisoryList.innerHTML = "";
+        currentAiAdvisory.forEach((item) => {
+          const li = document.createElement("li");
+          li.className = "flex items-start gap-2";
+          li.innerHTML = `<span class="text-red-500 font-bold">•</span><span>${item}</span>`;
+          advisoryList.appendChild(li);
+        });
+      }
 
       const timeline = document.getElementById("timeline");
-      timeline.innerHTML = "";
-      data.hourly.forEach((hour) => {
-        const hourColor = COLOR_MAP[hour.color] || COLOR_MAP.green;
-        const time = new Date(hour.time);
-        const label = time.toLocaleTimeString([], { hour: "numeric" });
+      if (timeline && data.hourly) {
+        timeline.innerHTML = "";
 
-        const card = document.createElement("div");
-        card.className = "flex-shrink-0 w-20 rounded-xl border border-slate-200 p-2 text-center";
-        card.innerHTML = `
-          <p class="text-xs text-slate-500">${label}</p>
-          <div class="w-4 h-4 rounded-full mx-auto my-1 ${hourColor.bg}"></div>
-          <p class="text-sm font-bold">${hour.heat_index_c}°C</p>
-          <p class="text-[10px] text-slate-400">${hour.band}</p>
-        `;
-        timeline.appendChild(card);
-      });
+        // Operational shift status callout summary
+        const pill = document.getElementById("timeline-status-pill");
+        if (pill && data.hourly.length > 0) {
+          let lastDangerIdx = -1;
+          for (let i = 0; i < data.hourly.length; i++) {
+            if (data.hourly[i].band === "Danger" || data.hourly[i].band === "Extreme Danger") {
+              lastDangerIdx = i;
+            }
+          }
+          if (lastDangerIdx >= 0) {
+            const lastDangerTime = formatTimeLabel(data.hourly[lastDangerIdx].time);
+            const reliefIdx = lastDangerIdx + 1;
+            if (reliefIdx < data.hourly.length) {
+              const reliefTime = formatTimeLabel(data.hourly[reliefIdx].time);
+              const reliefTemp = Math.round(data.hourly[reliefIdx].heat_index_c);
+              pill.innerHTML = `<span class="text-red-500 font-bold">●</span> Danger Threshold active until ${lastDangerTime} • Overnight Relief: ${reliefTime} (&lt;${reliefTemp + 1}°C)`;
+            } else {
+              pill.innerHTML = `<span class="text-red-500 font-bold">●</span> Danger Threshold active until ${lastDangerTime} • Continuous Monitoring`;
+            }
+          } else {
+            pill.innerHTML = `<span class="text-emerald-500 font-bold">●</span> Nominal Operational Range • No Active Danger Thresholds`;
+          }
+        }
+
+        data.hourly.forEach((hour, index) => {
+          const hourColor = COLOR_MAP[hour.color] || COLOR_MAP.green;
+          let hourInt = 12;
+          let label = hour.time;
+          try {
+            const d = new Date(hour.time);
+            if (!isNaN(d.getTime())) {
+              hourInt = d.getHours();
+              label = `${String(hourInt).padStart(2, "0")}:00`;
+            } else if (typeof hour.time === "string" && hour.time.includes(":")) {
+              const parts = hour.time.split(":");
+              hourInt = parseInt(parts[0].slice(-2), 10);
+              label = `${String(hourInt).padStart(2, "0")}:00`;
+            }
+          } catch (_) {}
+
+          const isNight = hourInt >= 21 || hourInt <= 5;
+          const isNow = index === 0;
+
+          const card = document.createElement("div");
+
+          if (isNow) {
+            card.className = "shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden bg-red-50/70 border-2 border-red-500 shadow-xs ring-2 ring-red-100";
+            card.innerHTML = `
+              <div class="flex flex-col items-center gap-0.5">
+                <span class="bg-red-600 text-white font-mono font-bold text-[9px] uppercase px-1.5 py-0.5 rounded tracking-wider">NOW</span>
+                <div class="text-xs font-bold text-red-900">${label}</div>
+              </div>
+              <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full ${hourColor.dot || 'bg-red-500'}"></div>
+              <div class="text-xs sm:text-sm font-extrabold text-red-950 font-mono tabular-nums">${hour.heat_index_c}°</div>
+              <div class="mt-1">${getRiskBadgeHtml(hour.band)}</div>
+            `;
+          } else {
+            card.className = `shrink-0 w-[78px] min-w-[78px] p-2 text-center rounded-lg flex flex-col justify-between overflow-hidden ${
+              isNight ? "bg-slate-50/80 border border-slate-200/60 text-slate-600" : "bg-white border border-slate-200"
+            }`;
+            card.innerHTML = `
+              <div class="text-xs ${isNight ? "text-slate-500 font-medium flex items-center justify-center gap-0.5" : "text-slate-700 font-medium"}">
+                ${isNight ? '<span class="text-[10px]">🌙</span>' : ""}<span>${label}</span>
+              </div>
+              <div class="w-2.5 h-2.5 mx-auto my-1.5 rounded-full ${hourColor.dot || hourColor.bg}"></div>
+              <div class="text-xs font-bold text-slate-900 tabular-nums">${hour.heat_index_c}°</div>
+              <div class="mt-1">${getRiskBadgeHtml(hour.band)}</div>
+            `;
+          }
+
+          timeline.appendChild(card);
+        });
+      }
+    }
+
+    function getRiskBadgeHtml(band) {
+      switch (band) {
+        case "Extreme Danger":
+          return `<span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-red-100 text-red-700">Danger</span>`;
+        case "Danger":
+          return `<span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-red-100 text-red-700">Danger</span>`;
+        case "Extreme Caution":
+          return `<span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-amber-100 text-amber-800">Ext Caution</span>`;
+        case "Caution":
+          return `<span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-yellow-100 text-yellow-800">Caution</span>`;
+        case "Normal":
+        default:
+          return `<span class="block text-[10px] font-bold tracking-tight truncate px-1 py-0.5 rounded bg-emerald-100 text-emerald-800">Normal</span>`;
+      }
+    }
+
+    function formatTimeLabel(timeStr) {
+      try {
+        const d = new Date(timeStr);
+        if (!isNaN(d.getTime())) {
+          return `${String(d.getHours()).padStart(2, "0")}:00`;
+        }
+        if (typeof timeStr === "string" && timeStr.includes(":")) {
+          const parts = timeStr.split(":");
+          return `${String(parseInt(parts[0].slice(-2), 10)).padStart(2, "0")}:00`;
+        }
+      } catch (_) {}
+      return timeStr;
     }
 
     const nearMeBtn = document.getElementById("near-me-btn");
-    if (nearMeBtn) {
-      nearMeBtn.addEventListener("click", () => {
-        if (!navigator.geolocation) {
-          alert("Geolocation is not supported by your browser.");
-          return;
-        }
+    function useCurrentLocation() {
+      if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser.");
+        return;
+      }
 
-        const originalText = nearMeBtn.innerHTML;
+      const originalHtml = nearMeBtn ? nearMeBtn.innerHTML : "📍 Near Me";
+      if (nearMeBtn) {
         nearMeBtn.disabled = true;
         nearMeBtn.innerHTML = "<span>⏳</span> Locating…";
+      }
 
-        navigator.geolocation.getCurrentPosition(
-          async (position) => {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          if (nearMeBtn) {
             nearMeBtn.disabled = false;
-            nearMeBtn.innerHTML = originalText;
+            nearMeBtn.innerHTML = originalHtml;
+          }
 
-            const lat = position.coords.latitude;
-            const lon = position.coords.longitude;
-            currentCoords = { lat, lon };
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          currentCoords = { lat, lon };
 
-            const citySelect = document.getElementById("city-select");
-            let locOption = document.getElementById("current-loc-option");
-            if (!locOption) {
-              locOption = document.createElement("option");
-              locOption.id = "current-loc-option";
-              citySelect.appendChild(locOption);
-            }
-            locOption.value = "current_location";
-            locOption.textContent = `📍 Current Location (${lat.toFixed(2)}, ${lon.toFixed(2)})`;
-            locOption.selected = true;
+          const citySelect = document.getElementById("city-select");
+          let locOption = document.getElementById("current-loc-option");
+          if (!locOption) {
+            locOption = document.createElement("option");
+            locOption.id = "current-loc-option";
+            citySelect.insertBefore(locOption, citySelect.firstChild);
+          }
+          locOption.value = "current_location";
+          locOption.textContent = `📍 Current Location (${lat.toFixed(2)}, ${lon.toFixed(2)})`;
+          locOption.selected = true;
 
-            await loadAdvisory();
-          },
-          (err) => {
+          await loadAdvisory();
+        },
+        (err) => {
+          if (nearMeBtn) {
             nearMeBtn.disabled = false;
-            nearMeBtn.innerHTML = originalText;
-            console.error("Geolocation error:", err);
-            alert(`Unable to retrieve your location: ${err.message}`);
-          },
-          { timeout: 10000, enableHighAccuracy: true }
-        );
-      });
+            nearMeBtn.innerHTML = originalHtml;
+          }
+          console.error("Geolocation error:", err);
+          alert(`Unable to retrieve your location: ${err.message}`);
+        },
+        { timeout: 10000, enableHighAccuracy: true }
+      );
     }
 
-    document.getElementById("city-select").addEventListener("change", (e) => {
-      if (e.target.value === "current_location" && currentCoords) {
-        loadAdvisory();
-      } else {
-        currentCoords = null;
-        currentCity = e.target.value;
-        loadAdvisory();
-      }
-    });
+    if (nearMeBtn) {
+      nearMeBtn.addEventListener("click", useCurrentLocation);
+    }
+
+    const citySelect = document.getElementById("city-select");
+    if (citySelect) {
+      citySelect.addEventListener("change", (e) => {
+        if (e.target.value === "current_location" && currentCoords) {
+          loadAdvisory();
+        } else {
+          currentCoords = null;
+          currentCity = e.target.value;
+          loadAdvisory();
+        }
+      });
+    }
 
     const langSelect = document.getElementById("lang-select");
     if (langSelect) {
       langSelect.addEventListener("change", (e) => {
         currentLang = e.target.value;
-        if (window.speechSynthesis && window.speechSynthesis.speaking) {
+        if (window.speechSynthesis && (window.speechSynthesis.speaking || window.speechSynthesis.pending)) {
           window.speechSynthesis.cancel();
-          const btn = document.getElementById("listen-btn");
-          if (btn) btn.innerHTML = "<span>🔊</span> Listen";
+        }
+        const btn = document.getElementById("listen-btn");
+        if (btn) {
+          btn.innerHTML = '<span>⏳</span><span>Updating...</span>';
+          btn.disabled = true;
+          btn.classList.add("opacity-60", "cursor-not-allowed");
+          btn.classList.remove("bg-rose-50", "text-rose-700", "border-rose-300");
         }
         loadAdvisory();
       });
     }
 
-    function getPreferredVoice(lang) {
-      if (!("speechSynthesis" in window)) return null;
-      const voices = window.speechSynthesis.getVoices();
+    // Keep persistent array on window to shield queued utterances from Chrome V8 garbage collection
+    window._activeTtsUtterances = [];
+    window._cachedSpeechVoices = [];
+
+    const BCP47_MAP = {
+      'en': 'en-US',
+      'hi': 'hi-IN',
+      'ar': 'ar-SA',
+      'es': 'es-ES'
+    };
+
+    // Filter out novelty, cartoon, AND all male voices for English to guarantee high-clarity female voice (Samantha)
+    const EXCLUDED_VOICES = new Set([
+      'albert', 'bad news', 'bahh', 'bells', 'boing', 'bubbles', 'cellos',
+      'deranged', 'good news', 'hysterical', 'junior', 'organ', 'pipe organ',
+      'trinoids', 'whisper', 'wobble', 'zarvox', 'ralph', 'kathy', 'fred',
+      'eddy', 'flo', 'grandma', 'grandpa', 'jester', 'reed', 'rocko',
+      'sandy', 'shelley', 'superstar',
+      // Explicitly exclude all male voices so it NEVER falls back to Daniel or other male voices
+      'daniel', 'alex', 'rishi', 'oliver', 'george', 'thomas', 'google uk english male'
+    ]);
+
+    // Target prioritized high-clarity voice names per language (all female for English)
+    const PREFERRED_VOICES = {
+      'en': ['samantha', 'google us english', 'karen', 'victoria', 'moira', 'tessa'],
+      'hi': ['lekha', 'google हिन्दी'],
+      'ar': ['majed', 'maged', 'tarik', 'laila', 'mariam'],
+      'es': ['mónica', 'monica', 'paulina']
+    };
+
+    function getBestVoice(voices, bcp47, langVal) {
       if (!voices || voices.length === 0) return null;
 
-      const targetBcp = LANG_BCP47[lang] || "en-US";
-      const langPrefix = targetBcp.split("-")[0];
-      const langVoices = voices.filter((v) =>
-        v.lang.replace("_", "-").toLowerCase().startsWith(langPrefix.toLowerCase())
-      );
+      // Filter out novelty and excluded male voices
+      const available = voices.filter(v => {
+        const lowerName = v.name.toLowerCase();
+        for (const ex of EXCLUDED_VOICES) {
+          if (lowerName.includes(ex)) return false;
+        }
+        return true;
+      });
 
-      if (langPrefix === "en") {
-        const preferredNames = [
-          "google us english",
-          "samantha",
-          "karen",
-          "victoria",
-          "siri",
-          "natural",
-          "premium"
-        ];
-        for (const pref of preferredNames) {
-          const match = langVoices.find((v) => v.name.toLowerCase().includes(pref));
-          if (match) return match;
+      // Explicit primary voice per language
+      if (langVal === 'en') {
+        const samantha = available.find(v => v.name.toLowerCase().includes('samantha'));
+        if (samantha) return samantha;
+        const googleUs = available.find(v => v.name.toLowerCase().includes('google us english'));
+        if (googleUs) return googleUs;
+        const karen = available.find(v => v.name.toLowerCase().includes('karen'));
+        if (karen) return karen;
+      } else if (langVal === 'hi') {
+        const lekha = available.find(v => v.name.toLowerCase().includes('lekha'));
+        if (lekha) return lekha;
+      } else if (langVal === 'ar') {
+        const majed = available.find(v => v.name.toLowerCase().includes('majed') || v.name.toLowerCase().includes('maged'));
+        if (majed) return majed;
+      } else if (langVal === 'es') {
+        const monica = available.find(v => v.name.toLowerCase().includes('mónica') || v.name.toLowerCase().includes('monica'));
+        if (monica) return monica;
+      }
+
+      const preferredNames = PREFERRED_VOICES[langVal] || [];
+
+      // 1. First priority: LOCAL offline native matching preferred voices (0ms network delay, pristine clarity)
+      for (const pref of preferredNames) {
+        const found = available.find(v => v.localService && v.name.toLowerCase().includes(pref));
+        if (found) return found;
+      }
+
+      // 2. Second priority: Any preferred voice (even if network service)
+      for (const pref of preferredNames) {
+        const found = available.find(v => v.name.toLowerCase().includes(pref));
+        if (found) return found;
+      }
+
+      // 3. Third priority: Local native voice matching language code (e.g. ar-001 or es-ES or hi-IN)
+      const localExact = available.find(v => v.localService && (
+        v.lang.replace('_', '-').toLowerCase() === bcp47.toLowerCase() ||
+        (langVal === 'ar' && v.lang.toLowerCase().includes('ar'))
+      ));
+      if (localExact) return localExact;
+
+      // 4. Fourth priority: Local native voice matching language prefix
+      const localPrefix = available.find(v => v.localService && v.lang.toLowerCase().startsWith(langVal));
+      if (localPrefix) return localPrefix;
+
+      // 5. Fifth priority: Any voice matching language prefix
+      const anyPrefix = available.find(v => v.lang.toLowerCase().startsWith(langVal));
+      if (anyPrefix) return anyPrefix;
+
+      // 6. Safe fallback (ensure never Daniel or male voice)
+      return available[0] || voices.find(v => !v.name.toLowerCase().includes('daniel')) || null;
+    }
+
+    function resetListenButton() {
+      const listenBtn = document.getElementById('listen-btn');
+      if (listenBtn) {
+        listenBtn.innerHTML = '<span>🔊</span><span>Listen</span>';
+        listenBtn.classList.remove('bg-rose-50', 'text-rose-700', 'border-rose-300');
+      }
+    }
+
+    function speakAdvisory() {
+      if (!('speechSynthesis' in window)) {
+        alert('Web Speech API is not supported in this browser.');
+        return;
+      }
+
+      const synth = window.speechSynthesis;
+      const listenBtn = document.getElementById('listen-btn');
+
+      // Toggle stop if already playing or pending
+      if (synth.speaking || synth.pending) {
+        synth.cancel();
+        window._activeTtsUtterances = [];
+        resetListenButton();
+        return;
+      }
+
+      // Clear any latent paused/stalled state
+      synth.cancel();
+
+      // 1. Gather bullets cleanly from state or DOM
+      let bullets = (Array.isArray(currentAiAdvisory) && currentAiAdvisory.length > 0)
+        ? [...currentAiAdvisory]
+        : [];
+
+      if (bullets.length === 0) {
+        const advisoryList = document.getElementById('advisory-list');
+        if (advisoryList) {
+          bullets = Array.from(advisoryList.querySelectorAll('li'))
+            .map(li => li.innerText.replace(/^[•\-\*\d\.\s]+/, '').trim())
+            .filter(t => t.length > 0);
         }
       }
 
-      const naturalVoice = langVoices.find((v) =>
-        v.name.toLowerCase().includes("natural") || v.name.toLowerCase().includes("premium")
-      );
-      if (naturalVoice) return naturalVoice;
+      if (bullets.length === 0) {
+        console.warn('[TTS] No advisory text detected.');
+        return;
+      }
 
-      return (
-        langVoices.find((v) => v.lang.replace("_", "-").toLowerCase() === targetBcp.toLowerCase()) ||
-        langVoices[0] ||
-        null
-      );
-    }
+      // 2. Resolve language and enunciation parameters
+      const langSelect = document.getElementById('lang-select');
+      const langVal = (langSelect ? langSelect.value : currentLang || 'en').toLowerCase().trim();
+      const bcp47 = BCP47_MAP[langVal] || 'en-US';
+      const targetRate = (langVal === 'hi' || langVal === 'ar') ? 0.9 : (langVal === 'es' ? 0.95 : 1.0);
 
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.onvoiceschanged = () => {
-        window.speechSynthesis.getVoices();
-      };
-    }
+      // Force resume if browser engine was suspended
+      if (synth.paused) {
+        synth.resume();
+      }
 
-    const listenBtn = document.getElementById("listen-btn");
-    if (listenBtn) {
-      listenBtn.addEventListener("click", () => {
-        if (!("speechSynthesis" in window)) {
-          alert("Web Speech audio synthesis is not supported in this browser.");
-          return;
+      // 3. Select best available voice (strictly Samantha / female)
+      let voices = (window._cachedSpeechVoices && window._cachedSpeechVoices.length > 0)
+        ? window._cachedSpeechVoices
+        : synth.getVoices();
+
+      if (!voices || voices.length === 0) {
+        voices = synth.getVoices();
+      }
+
+      const chosenVoice = getBestVoice(voices, bcp47, langVal);
+
+      // 4. Update UI immediately to active Stop state
+      if (listenBtn) {
+        listenBtn.innerHTML = '<span>⏹️</span><span>Stop</span>';
+        listenBtn.classList.add('bg-rose-50', 'text-rose-700', 'border-rose-300');
+      }
+
+      // 5. Retain persistent references on window to prevent Chrome V8 garbage collection
+      window._activeTtsUtterances = [];
+
+      // 6. Speak each bullet as a sequential utterance
+      bullets.forEach((bulletText, index) => {
+        const cleanText = bulletText.replace(/^[•\-\*\d\.\s]+/, '').trim();
+        if (!cleanText) return;
+
+        const utt = new SpeechSynthesisUtterance(cleanText);
+        // Set lang before voice for correct engine localization
+        utt.lang = chosenVoice ? chosenVoice.lang : bcp47;
+        if (chosenVoice) {
+          utt.voice = chosenVoice;
+        }
+        utt.rate = targetRate;
+        utt.pitch = 1.0;
+        utt.volume = 1.0;
+
+        if (index === bullets.length - 1) {
+          utt.onend = () => {
+            resetListenButton();
+            window._activeTtsUtterances = [];
+          };
         }
 
-        if (window.speechSynthesis.speaking) {
-          window.speechSynthesis.cancel();
-          listenBtn.innerHTML = "<span>🔊</span> Listen";
-          return;
-        }
-
-        if (!currentAiAdvisory || currentAiAdvisory.length === 0) {
-          return;
-        }
-
-        // Clean bullets and strip markers (-, *, •, numbers) for crisp audio playback
-        const cleanedBullets = currentAiAdvisory
-          .map((item) => item.replace(/^[•\-\*\d\.\)\s]+/, "").trim())
-          .filter((item) => item.length > 0);
-
-        if (cleanedBullets.length === 0) return;
-
-        const textToSpeak = cleanedBullets.join(". ");
-        const utterance = new SpeechSynthesisUtterance(textToSpeak);
-        const targetBcp = LANG_BCP47[currentLang] || "en-US";
-        utterance.lang = targetBcp;
-
-        // Dial rate down to 0.92 for crisp, clear enunciation
-        utterance.rate = 0.92;
-        utterance.pitch = 1.0;
-
-        const voice = getPreferredVoice(currentLang);
-        if (voice) {
-          utterance.voice = voice;
-        }
-
-        listenBtn.innerHTML = "<span>⏹️</span> Stop";
-        utterance.onend = () => {
-          listenBtn.innerHTML = "<span>🔊</span> Listen";
+        utt.onerror = (e) => {
+          console.warn('[TTS] Utterance error:', e);
+          if (index === bullets.length - 1) {
+            resetListenButton();
+            window._activeTtsUtterances = [];
+          }
         };
-        utterance.onerror = () => {
-          listenBtn.innerHTML = "<span>🔊</span> Listen";
-        };
 
-        window.speechSynthesis.speak(utterance);
+        window._activeTtsUtterances.push(utt);
+        synth.speak(utt);
       });
+    }
+
+    // Pre-cache voices globally to eliminate Chromium cold-load empty getVoices() delay
+    function refreshVoicesCache() {
+      if ('speechSynthesis' in window) {
+        const v = window.speechSynthesis.getVoices();
+        if (v && v.length > 0) {
+          window._cachedSpeechVoices = v;
+        }
+      }
+    }
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.onvoiceschanged = refreshVoicesCache;
+      refreshVoicesCache();
+      setTimeout(refreshVoicesCache, 50);
+      setTimeout(refreshVoicesCache, 200);
+      setTimeout(refreshVoicesCache, 600);
+    }
+
+    window.speakAdvisory = speakAdvisory;
+    window.toggleAudio = speakAdvisory;
+    window.refreshVoicesCache = refreshVoicesCache;
+
+    // Bind click event cleanly
+    const listenBtn = document.getElementById('listen-btn');
+    if (listenBtn) {
+      listenBtn.onclick = speakAdvisory;
     }
 
     document.querySelectorAll(".persona-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
-        setPersonaButtons(btn.dataset.role);
-        loadAdvisory();
+        const role = btn.dataset.role || (btn.dataset.persona === "worker" ? "outdoor_worker" : "general_public");
+        setPersona(role);
       });
     });
 
+    // Initial activation
     setPersonaButtons("general_public");
     loadAdvisory();
   </script>
