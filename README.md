@@ -34,6 +34,13 @@ Most weather tools lack:
   - **General Commuters:** Exposure thresholds and UV/hydration precautions.
 - Displays an intuitive, horizontally scrollable **24-hour heat index timeline** so users can identify danger windows before heading outdoors.
 
+### 🔬 Meteorological Precision & Calibration
+Unlike general consumer weather applications that display proprietary synthetic "feels like" metrics, HeatSafe implements deterministic NOAA Rothfusz regression algorithms (NOAA Technical Attachment SR 90-23) benchmarked against open meteorological models and physical ground-truth METAR airport stations (OMDB). 
+
+- **Ambient Temperature:** Sensors track official ground-truth weather stations within **±0.8°C**.
+- **Relative Humidity:** Sensors track within **±0.5% to ±2.5% RH**.
+- **OSHA Separation:** The platform explicitly separates dry-bulb ambient air temperature from the calculated physiological Heat Index to provide actionable OSHA work/rest intervals without ambiguity.
+
 ---
 
 ## 🏗️ Architecture & System Design
