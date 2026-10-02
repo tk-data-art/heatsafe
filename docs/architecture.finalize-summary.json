@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Users/tksmac/Documents/AWS Hackathon/docs/architecture.json",
+    "sha256": "f0483d9522a86c10f50e20c5cf5dadb4b95ff9d2ad2cd1b5f7d61c3cbc14b525",
+    "bytes": 5496
+  },
+  "artifact": {
+    "path": "/Users/tksmac/Documents/AWS Hackathon/docs/architecture.html",
+    "sha256": "d7eb2b73ccedd931715a56e3411b325affc4ca798e6c98c28a33e1986a57b379",
+    "bytes": 772166
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Users/tksmac/Documents/AWS Hackathon/docs/architecture.finalize.json",
+    "summaryReceipt": "/Users/tksmac/Documents/AWS Hackathon/docs/architecture.finalize-summary.json",
+    "browserCheckReceipt": "/Users/tksmac/Documents/AWS Hackathon/docs/architecture.browser-check.json"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1281,
+  "visualReviewRecommendation": {
+    "action": "inspect-route-readability",
+    "signals": {
+      "resolvedCrossovers": 1,
+      "routesOverSuggestedBends": 2
+    },
+    "reason": "Automated gates passed, but crossings or detours still need perceptual review before claiming visual quality.",
+    "affectedRoutes": {
+      "crossings": [
+        {
+          "left": {
+            "id": "ecs-to-noaa",
+            "from": "ecs_fargate",
+            "to": "noaa_core",
+            "label": "in-process math",
+            "collectionIndex": 5,
+            "artifactIndex": 6
+          },
+          "right": {
+            "id": "ecr-to-ecs",
+            "from": "ecr",
+            "to": "ecs_fargate",
+            "label": "pull image",
+            "collectionIndex": 8,
+            "artifactIndex": 9
+          },
+          "point": [
+            681,
+            388.0000000000009
+          ],
+          "sharedNode": "ecs_fargate"
+        }
+      ],
+      "detours": [
+        {
+          "relationship": {
+            "id": "ecr-to-ecs",
+            "from": "ecr",
+            "to": "ecs_fargate",
+            "label": "pull image",
+            "collectionIndex": 8,
+            "artifactIndex": 9
+          },
+          "bends": 3,
+          "stretch": 1
+        },
+        {
+          "relationship": {
+            "id": "ecs-to-cloudwatch",
+            "from": "ecs_fargate",
+            "to": "cloudwatch",
+            "label": "metrics + logs",
+            "collectionIndex": 9,
+            "artifactIndex": 10
+          },
+          "bends": 3,
+          "stretch": 1
+        }
+      ],
+      "truncated": false
+    },
+    "hints": [
+      "ecs_fargate → noaa_core and ecr → ecs_fargate cross next to ecs_fargate: move node noaa_core or ecr so the two reach ecs_fargate from different sides (for example one level with it, one directly above or below it).",
+      "ecr → ecs_fargate needs 3 bends: move node ecr or ecs_fargate so they share a row or column with matching centers, or sit diagonally with a clear corner.",
+      "ecs_fargate → cloudwatch needs 3 bends: move node ecs_fargate or cloudwatch so they share a row or column with matching centers, or sit diagonally with a clear corner."
+    ],
+    "repair": "Trace these relationships at the desktop viewport. For Architecture, use references/architecture-layout-repair.md: reflow a blocked main path or tangled connected scene, and repair an isolated defect locally only when the surrounding composition is accepted. Preserve all semantic content and user-fixed geometry. Rerun finalize once after the edit."
+  }
+}

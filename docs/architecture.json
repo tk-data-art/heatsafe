@@ -1,0 +1,208 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "HeatSafe Climate & Heat-Stress Advisory Architecture",
+    "output": "docs/architecture.html",
+    "visual_preset": "blueprint",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    {
+      "id": "browser",
+      "type": "frontend",
+      "label": "Client Browser",
+      "sublabel": "Tailwind UI + Web Speech TTS",
+      "tag": "public client",
+      "pos": [40, 260],
+      "size": [140, 68]
+    },
+    {
+      "id": "alb",
+      "type": "cloud",
+      "label": "Application Load Balancer",
+      "sublabel": "Internet-Facing ALB · TLS :443",
+      "tag": "ingress",
+      "pos": [280, 260],
+      "size": [180, 68]
+    },
+    {
+      "id": "ecs_fargate",
+      "type": "backend",
+      "label": "FastAPI Web Service",
+      "sublabel": "Uvicorn · HTTP Handler :8000",
+      "tag": "app container",
+      "brand": "fastapi",
+      "pos": [575, 260],
+      "size": [240, 76]
+    },
+    {
+      "id": "noaa_core",
+      "type": "backend",
+      "label": "NOAA Rothfusz Core",
+      "sublabel": "Rothfusz Polynomial → Heat Index → OSHA Risk Band",
+      "tag": "services/heat_index.py",
+      "brand": "python",
+      "pos": [575, 440],
+      "size": [240, 68]
+    },
+    {
+      "id": "bedrock",
+      "type": "backend",
+      "label": "Amazon Bedrock",
+      "sublabel": "Claude 3 Haiku Directives",
+      "tag": "multilingual AI",
+      "brand": "anthropic",
+      "pos": [1000, 260],
+      "size": [160, 68]
+    },
+    {
+      "id": "open_meteo",
+      "type": "external",
+      "label": "Open-Meteo High-Res API",
+      "sublabel": "ECMWF/GFS · METAR Calibrated",
+      "tag": "weather ingestion",
+      "pos": [575, 60],
+      "size": [240, 68]
+    },
+    {
+      "id": "ecr",
+      "type": "cloud",
+      "label": "Amazon ECR",
+      "sublabel": "Container Registry · linux/amd64",
+      "tag": "container registry",
+      "brand": "docker",
+      "pos": [280, 440],
+      "size": [180, 68]
+    },
+    {
+      "id": "cloudwatch",
+      "type": "cloud",
+      "label": "Amazon CloudWatch",
+      "sublabel": "Logs, Telemetry & ALB Health",
+      "tag": "observability",
+      "pos": [1000, 440],
+      "size": [160, 68]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "AWS Region: us-east-1",
+      "wraps": ["alb", "ecs_fargate", "noaa_core", "bedrock", "ecr", "cloudwatch"]
+    },
+    {
+      "kind": "security-group",
+      "label": "ECS Fargate Service: HeatSafe Task (1 vCPU, 2 GiB)",
+      "wraps": ["ecs_fargate", "noaa_core"],
+      "pad": 24
+    }
+  ],
+  "connections": [
+    {
+      "id": "client-to-alb",
+      "from": "browser",
+      "to": "alb",
+      "label": "HTTPS :443",
+      "variant": "emphasis"
+    },
+    {
+      "id": "alb-to-client",
+      "from": "alb",
+      "to": "browser",
+      "label": "deliver advisory",
+      "variant": "emphasis"
+    },
+    {
+      "id": "alb-to-ecs",
+      "from": "alb",
+      "to": "ecs_fargate",
+      "label": "forward :8000",
+      "variant": "emphasis"
+    },
+    {
+      "id": "ecs-to-alb",
+      "from": "ecs_fargate",
+      "to": "alb",
+      "label": "HTML/JSON response",
+      "variant": "emphasis"
+    },
+    {
+      "id": "ecs-to-meteo",
+      "from": "ecs_fargate",
+      "to": "open_meteo",
+      "label": "Hourly T (°C) & RH (%)",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "ecs-to-noaa",
+      "from": "ecs_fargate",
+      "to": "noaa_core",
+      "label": "in-process math",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "ecs-to-bedrock",
+      "from": "ecs_fargate",
+      "to": "bedrock",
+      "label": "Telemetry & Risk Band Context",
+      "variant": "emphasis"
+    },
+    {
+      "id": "bedrock-to-ecs",
+      "from": "bedrock",
+      "to": "ecs_fargate",
+      "label": "Multilingual Safety Directives",
+      "variant": "emphasis"
+    },
+    {
+      "id": "ecr-to-ecs",
+      "from": "ecr",
+      "to": "ecs_fargate",
+      "label": "pull image",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "bottom"
+    },
+    {
+      "id": "ecs-to-cloudwatch",
+      "from": "ecs_fargate",
+      "to": "cloudwatch",
+      "label": "metrics + logs",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "left"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Client & Edge Ingress",
+      "items": [
+        "Client browser executes Tailwind UI, Web Speech API audio synthesis, and CSV exports",
+        "Internet-Facing ALB terminates TLS :443, forwards requests to ECS :8000, and returns rendered advisory"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Deterministic Computing",
+      "items": [
+        "ECS Fargate runs async FastAPI runtime with in-process NOAA Rothfusz engine (services/heat_index.py)",
+        "In-process calculation evaluates Rothfusz Polynomial → Heat Index → OSHA Risk Band with zero IPC overhead",
+        "External Open-Meteo High-Res API provides hourly temperature (°C) & relative humidity (%) via HTTPS egress"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "AI & Observability",
+      "items": [
+        "ECS Fargate invokes Amazon Bedrock (Claude 3 Haiku) with telemetry & risk context for multilingual directives",
+        "Amazon ECR stores immutable container images; CloudWatch captures container logs, metrics, and ALB health"
+      ]
+    }
+  ]
+}

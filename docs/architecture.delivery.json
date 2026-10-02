@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "2cd19305-0b56-4baf-ba00-72456f440fd4",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/Users/tksmac/Documents/AWS Hackathon/docs/architecture.json",
+  "output": "/Users/tksmac/Documents/AWS Hackathon/docs/architecture.html",
+  "specification": {
+    "sha256": "f0483d9522a86c10f50e20c5cf5dadb4b95ff9d2ad2cd1b5f7d61c3cbc14b525",
+    "bytes": 5496
+  },
+  "artifact": {
+    "sha256": "d7eb2b73ccedd931715a56e3411b325affc4ca798e6c98c28a33e1986a57b379",
+    "bytes": 772166
+  }
+}
