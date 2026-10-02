@@ -64,3 +64,34 @@ Unlike general consumer weather applications that display proprietary synthetic 
 │     ├── services/weather.py     -> Async Open-Meteo API client         │
 │     └── services/heat_index.py  -> NOAA Rothfusz Regression Engine     │
 └────────────────────────────────────────────────────────────────────────┘
+
+## 🏗️ System Architecture
+
+<p align="center">
+  <img src="docs/assets/architecture.png" alt="HeatSafe Climate & Heat-Stress Advisory Architecture" width="100%">
+</p>
+
+### Architecture Overview
+
+HeatSafe follows a decoupled, deterministic-first serverless architecture on AWS:
+
+1. **Client Tier (Browser Edge)**
+   - Responsive Tailwind UI providing real-time dual-metric biometeorological visualization.
+   - **Edge Voice Synthesis:** Offloads multilingual text-to-speech to the browser's native **Web Speech API**, eliminating cloud audio egress bandwidth and latency.
+   - Ephemeral client-side telemetry caching with instantaneous CSV audit export.
+
+2. **Ingress & Traffic Routing**
+   - **Internet-Facing Application Load Balancer (ALB):** Handles public HTTPS ingress on port `:443` with TLS termination.
+   - Directs traffic to the private container target group on port `:8000`.
+
+3. **Compute & Deterministic Engine (AWS Region: us-east-1)**
+   - **AWS ECS on AWS Fargate:** Runs the serverless containerized FastAPI/Uvicorn application (`1 vCPU`, `2 GiB`).
+   - **In-Process NOAA Rothfusz Core (`services/heat_index.py`):** Deterministically computes the 16-parameter Rothfusz polynomial regression and maps results to OSHA work/rest schedules and hydration quotas in-memory with sub-millisecond execution.
+
+4. **Intelligence Layer**
+   - **Amazon Bedrock (`anthropic.claude-3-haiku`):** Invoked synchronously via `bedrock:InvokeModel`. Receives pre-calculated telemetry and OSHA risk bands to generate tactical, multilingual safety directives (English, Arabic, Hindi, Spanish) without arithmetic hallucinations.
+
+5. **External Ingestion & Observability**
+   - **Open-Meteo High-Resolution API:** Fetches downscaled ambient temperature and relative humidity calibrated against airport METAR ground stations (OMDB).
+   - **Amazon ECR:** Manages immutable container images (`linux/amd64`).
+   - **Amazon CloudWatch:** Collects real-time Uvicorn application logs, ALB health checks, and container CPU/Memory metrics.
