@@ -43,8 +43,6 @@ Unlike general consumer weather applications that display proprietary synthetic 
 
 ---
 
-## 🏗️ Architecture & System Design
-
 ## 🏗️ System Architecture
 
 <p align="center">
