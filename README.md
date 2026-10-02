@@ -49,6 +49,13 @@ Unlike general consumer weather applications that display proprietary synthetic 
   <img src="docs/assets/architecture.png" alt="HeatSafe Climate & Heat-Stress Advisory Architecture" width="100%">
 </p>
 
+<p align="center">
+  <a href="https://tk-data-art.github.io/heatsafe/architecture.html">
+    <b>🎮 Launch Interactive Architecture Viewer (Archify)</b>
+  </a><br>
+  <i>Click to trace live data paths, inspect node contracts, and toggle dark/light blueprints</i>
+</p>
+
 ### Architecture Overview
 
 HeatSafe follows a decoupled, deterministic-first serverless architecture on AWS:
