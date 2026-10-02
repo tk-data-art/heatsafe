@@ -45,26 +45,6 @@ Unlike general consumer weather applications that display proprietary synthetic 
 
 ## 🏗️ Architecture & System Design
 
-```text
-                     [ User Browser / Mobile Device ]
-                                    │
-                                    ▼ (HTTPS)
-      [ AWS Application Load Balancer & ECS Express Mode Domain ]
-                                    │
-                                    ▼ (Port 8080)
-┌────────────────────────────────────────────────────────────────────────┐
-│ Amazon ECS Fargate Task (heatsafe:latest)                              │
-│                                                                        │
-│   FastAPI Backend                                                      │
-│     ├── GET /api/health    -> Health check endpoint                    │
-│     ├── GET /api/advisory  -> Computes real-time heat index & timeline │
-│     └── GET /              -> Serves responsive Tailwind UI            │
-│                                                                        │
-│   Deterministic Processing Modules                                     │
-│     ├── services/weather.py     -> Async Open-Meteo API client         │
-│     └── services/heat_index.py  -> NOAA Rothfusz Regression Engine     │
-└────────────────────────────────────────────────────────────────────────┘
-
 ## 🏗️ System Architecture
 
 <p align="center">
